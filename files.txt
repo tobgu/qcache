@@ -1,0 +1,16 @@
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/qcache.pyc
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/qcache.py
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/EGG-INFO/SOURCES.txt
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/EGG-INFO/PKG-INFO
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/EGG-INFO/not-zip-safe
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/EGG-INFO/dependency_links.txt
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/EGG-INFO/requires.txt
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/EGG-INFO/top_level.txt
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/EGG-INFO/entry_points.txt
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/qcache/__init__.py
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/qcache/query.py
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/qcache/query.pyc
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/qcache/main.py
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/qcache/__init__.pyc
+/home/tobias/Envs/qcache/lib/python2.7/site-packages/qcache-0.0.1-py2.7.egg/qcache/main.pyc
+/home/tobias/Envs/qcache/bin/qcache
