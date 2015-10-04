@@ -1,9 +1,11 @@
+# coding=utf-8
 import json
+import pytest
 from tornado.httputil import url_concat
 from tornado.testing import AsyncHTTPTestCase
 import qcache.app as app
 import csv
-import StringIO
+from StringIO import StringIO
 
 
 def to_json(data):
@@ -14,7 +16,7 @@ def to_csv(data):
     if not data:
         return ""
 
-    out = StringIO.StringIO()
+    out = StringIO()
     writer = csv.DictWriter(out, data[0].keys())
     writer.writeheader()
 
@@ -25,7 +27,7 @@ def to_csv(data):
 
 
 def from_csv(text):
-    input_data = StringIO.StringIO(text)
+    input_data = StringIO(text)
     return list(csv.DictReader(input_data))
 
 
@@ -69,11 +71,31 @@ class TestSingleServer(AsyncHTTPTestCase):
         assert response.code == 200
         assert from_csv(response.body) == [{'baz': '1', 'bar': '10'}]  # NB: Strings for numbers here
 
-    def test_upload_and_query_json_unicode_characters(self):
-        pass
+    @pytest.mark.skipif(True, reason="JSON + unicode problem")
+    def test_upload_json_query_json_unicode_characters(self):
+        response = self.post_json('/dataset/abc', [{'foo': u'Iñtërnâtiônàližætiøn'}, {'foo': 'qux'}])
+        assert response.code == 201
 
-    def test_upload_and_query_csv_unicode_characters(self):
-        pass
+        response = self.query_json('/dataset/abc', {'where': ['==', 'foo', u'"Iñtërnâtiônàližætiøn"']})
+        assert response.code == 200
+        assert json.loads(response.body) == [{'foo': u'Iñtërnâtiônàližætiøn'}]
+
+    def test_upload_csv_query_csv_unicode_characters_encoded_as_utf8(self):
+        # TODO
+        response = self.post_csv('/dataset/abc', [{'foo': u'Iñtërnâtiônàližætiønåäö'.encode('utf-8')}, {'foo': 'qux'}])
+        assert response.code == 201
+
+        response = self.query_csv('/dataset/abc', {'where': ['==', 'foo', u'"Iñtërnâtiônàližætiønåäö"']})
+        assert response.code == 200
+        assert from_csv(response.body) == [{'foo': u'Iñtërnâtiônàližætiønåäö'.encode('utf-8')}]
+
+    def test_upload_and_query_json_unicode_characters_encoded_as_utf8(self):
+        response = self.post_csv('/dataset/abc', [{'foo': u'Iñtërnâtiônàližætiønåäö'.encode('utf-8')}, {'foo': 'qux'}])
+        assert response.code == 201
+
+        response = self.query_json('/dataset/abc', {'where': ['==', 'foo', u'"Iñtërnâtiônàližætiønåäö"']})
+        assert response.code == 200
+        assert json.loads(response.body) == [{'foo': u'Iñtërnâtiônàližætiønåäö'}]
 
 
 # Error cases:

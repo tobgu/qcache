@@ -1,6 +1,6 @@
-from StringIO import StringIO
 import json
 import datetime
+from StringIO import StringIO
 import pandas
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
@@ -75,7 +75,7 @@ class DatasetHandler(RequestHandler):
         if content_type == CONTENT_TYPE_CSV:
             df = pandas.read_csv(StringIO(self.request.body))
         else:
-            df = pandas.read_json(StringIO(self.request.body), orient='records')
+            df = pandas.DataFrame.from_records(json.loads(self.request.body))
 
         self.key_to_dataset[dataset_key] = df
         self.set_status(ResponseCode.CREATED)

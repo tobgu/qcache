@@ -1,4 +1,6 @@
+# coding=utf-8
 from StringIO import StringIO
+import json
 import pandas
 import pytest
 from qcache.query import query, MalformedQueryException
@@ -156,3 +158,25 @@ def test_offset_and_limit(basic_frame):
     frame = query(basic_frame, {"offset": 1, "limit": 1})
     assert_rows(frame, ['aaa'])
 
+
+
+############## Unicode #################
+
+def test_unicode_content_from_csv():
+    data = u"""foo,bar
+aaa,Iñtërnâtiônàližætiøn
+bbb,räksmörgås
+ccc,"""
+
+    input_frame = pandas.read_csv(StringIO(data))
+    frame = query(input_frame, {'where': ["==", "bar", u"'räksmörgås'"]})
+
+    assert_rows(frame, ['bbb'])
+
+@pytest.mark.skipif(True, reason="JSON + unicode problem")
+def test_unicode_content_from_json():
+    data = [{'foo': 'aaa', 'bar': u'Iñtërnâtiônàližætiøn'}, {'foo': 'bbb', 'bar': u'räksmörgås'}]
+    input_frame = pandas.read_json(json.dumps(data), orient='records')
+    frame = query(input_frame, {'where': ["==", "bar", u"'räksmörgås'"]})
+
+    assert_rows(frame, ['bbb'])

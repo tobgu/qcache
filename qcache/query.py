@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from pandas import DataFrame
 from pandas.core.groupby import DataFrameGroupBy
 
@@ -12,7 +13,7 @@ def raise_malformed(message, q):
 
 def build_filter(q):
     if type(q) is not list:
-        return str(q)
+        return unicode(q)
 
     if not q:
         raise_malformed("Empty expression not allowed", q)
@@ -82,7 +83,7 @@ def project(dataframe, project_q):
                 raise_malformed("Multiple aggregation functions without group by", project_q)
 
             # Intricate, apply the selected function to the selected column
-            arg, fn = aggregate_fns.items()[0]
+            arg, fn = next(iter(aggregate_fns.items()))
             dataframe = dataframe[[arg]]
             return DataFrame.from_dict({fn: [getattr(dataframe, fn)(axis=0)[0]]})
 
