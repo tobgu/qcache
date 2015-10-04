@@ -7,7 +7,6 @@ from tornado.web import RequestHandler, Application, url, HTTPError
 from qcache.query import query
 import re
 
-CHARSET_REGEX = re.compile('charset=([A-Za-z0-9_-]+)')
 
 class ResponseCode(object):
     OK = 200
@@ -34,6 +33,16 @@ class CacheItem(object):
 CONTENT_TYPE_JSON = 'application/json'
 CONTENT_TYPE_CSV = 'text/csv'
 ACCEPTED_TYPES = {CONTENT_TYPE_JSON, CONTENT_TYPE_CSV}  # text/*, */*?
+CHARSET_REGEX = re.compile('charset=([A-Za-z0-9_-]+)')
+
+
+class UTF8JSONDecoder(json.JSONDecoder):
+    def decode(self, json_string):
+        obj = super(UTF8JSONDecoder, self).decode(json_string)
+        assert isinstance(obj, list), "Must pass a list of objects"
+
+        for r in obj:
+            yield {k: v.encode(encoding='utf-8') if isinstance(v, unicode) else v for k, v in r.items()}
 
 
 class DatasetHandler(RequestHandler):
@@ -86,17 +95,12 @@ class DatasetHandler(RequestHandler):
             # This is a waste of CPU cycles, first the JSON decoder decodes all strings
             # from UTF-8 then we immediately encode them back into UTF-8. Couldn't
             # find an easy solution to this though.
-            data = utf8_encode(json.loads(self.request.body))
+            data = json.loads(self.request.body, cls=UTF8JSONDecoder)
             df = pandas.DataFrame.from_records(data)
 
         self.key_to_dataset[dataset_key] = df
         self.set_status(ResponseCode.CREATED)
         self.write("")
-
-
-def utf8_encode(records):
-    for r in records:
-        yield {k: v.encode(encoding='utf-8') if isinstance(v, unicode) else v for k, v in r.items()}
 
 
 def make_app(url_prefix='/qcache', debug=False):

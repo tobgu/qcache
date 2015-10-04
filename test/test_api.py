@@ -76,10 +76,11 @@ class TestSingleServer(AsyncHTTPTestCase):
         assert response.code == 201
 
         response = self.query_json('/dataset/abc', {'where': ['==', 'foo', u'"Iñtërnâtiônàližætiøn"']})
+
         assert response.code == 200
         response_data = json.loads(response.body)
-        assert type(response_data[0]['foo']) is unicode
         assert response_data == [{'foo': u'Iñtërnâtiônàližætiøn'}]
+        assert type(response_data[0]['foo']) is unicode
 
     def test_upload_csv_query_csv_unicode_characters_encoded_as_utf8(self):
         response = self.post_csv('/dataset/abc', [{'foo': u'Iñtërnâtiônàližætiønåäö'.encode('utf-8')}, {'foo': 'qux'}])
@@ -97,8 +98,8 @@ class TestSingleServer(AsyncHTTPTestCase):
 
         assert response.code == 200
         response_data = json.loads(response.body)
-        assert type(response_data[0]['foo']) is unicode
         assert json.loads(response.body) == [{'foo': u'Iñtërnâtiônàližætiønåäö'}]
+        assert type(response_data[0]['foo']) is unicode
 
     def test_upload_invalid_content_type(self):
         response = self.fetch('/dataset/abc', method='POST', body='', headers={'Content-Type': 'text/html'})
