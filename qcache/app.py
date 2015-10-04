@@ -5,7 +5,9 @@ import pandas
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
 from qcache.query import query
+import re
 
+CHARSET_REGEX = re.compile('charset=([A-Za-z0-9_-]+)')
 
 class ResponseCode(object):
     OK = 200
@@ -47,10 +49,17 @@ class DatasetHandler(RequestHandler):
         raise HTTPError(ResponseCode.NOT_ACCEPTABLE)
 
     def content_type(self):
-        content_type = self.request.headers.get("Content-Type", CONTENT_TYPE_CSV)
+        header = self.request.headers.get("Content-Type", CONTENT_TYPE_CSV).split(';')
+        content_type = header[0]
         if content_type not in ACCEPTED_TYPES:
             raise HTTPError(ResponseCode.UNSUPPORTED_MEDIA_TYPE,
                             "Content-Type '{content_type}' not supported".format(content_type=content_type))
+
+        if len(header) > 1:
+            m = CHARSET_REGEX.match(header[1].strip())
+            if m and m.group(1) != 'utf-8':
+                raise HTTPError(ResponseCode.UNSUPPORTED_MEDIA_TYPE,
+                                "charset={charset} not supported, only utf-8".format(charset=m.group(1)))
 
         return content_type
 
@@ -63,8 +72,7 @@ class DatasetHandler(RequestHandler):
         df = self.key_to_dataset[dataset_key]
         response = query(df, json.loads(q))
 
-        # encoding="utf-8"
-        self.set_header("Content-Type", accept_type)
+        self.set_header("Content-Type", "{content_type}; charset=utf-8".format(content_type=accept_type))
         if accept_type == CONTENT_TYPE_CSV:
             self.write(response.to_csv(index=False))
         else:
@@ -75,14 +83,23 @@ class DatasetHandler(RequestHandler):
         if content_type == CONTENT_TYPE_CSV:
             df = pandas.read_csv(StringIO(self.request.body))
         else:
-            df = pandas.DataFrame.from_records(json.loads(self.request.body))
+            # This is a waste of CPU cycles, first the JSON decoder decodes all strings
+            # from UTF-8 then we immediately encode them back into UTF-8. Couldn't
+            # find an easy solution to this though.
+            data = utf8_encode(json.loads(self.request.body))
+            df = pandas.DataFrame.from_records(data)
 
         self.key_to_dataset[dataset_key] = df
         self.set_status(ResponseCode.CREATED)
         self.write("")
 
 
-def make_app(url_prefix='/qcache'):
+def utf8_encode(records):
+    for r in records:
+        yield {k: v.encode(encoding='utf-8') if isinstance(v, unicode) else v for k, v in r.items()}
+
+
+def make_app(url_prefix='/qcache', debug=False):
     # /dataset/{key}
     # /dataset/{namespace}/{key}
     # /stat
@@ -92,11 +109,11 @@ def make_app(url_prefix='/qcache'):
     return Application([
         url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)".format(url_prefix=url_prefix),
             DatasetHandler, dict(key_to_dataset={}), name="dataset")
-    ], debug=True)
+    ], debug=debug)
 
 
 def run():
-    make_app().listen(8888, max_buffer_size=1104857600)
+    make_app(debug=True).listen(8888, max_buffer_size=1104857600)
     IOLoop.current().start()
 
 if __name__ == "__main__":

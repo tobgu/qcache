@@ -173,10 +173,10 @@ ccc,"""
 
     assert_rows(frame, ['bbb'])
 
-@pytest.mark.skipif(True, reason="JSON + unicode problem")
+
 def test_unicode_content_from_json():
-    data = [{'foo': 'aaa', 'bar': u'Iñtërnâtiônàližætiøn'}, {'foo': 'bbb', 'bar': u'räksmörgås'}]
-    input_frame = pandas.read_json(json.dumps(data), orient='records')
+    data = [{'foo': 'aaa', 'bar': u'Iñtërnâtiônàližætiøn'}, {'foo': 'bbb', 'bar': u'räksmörgås'.encode(encoding='utf-8')}]
+    input_frame = pandas.DataFrame.from_records(data)
     frame = query(input_frame, {'where': ["==", "bar", u"'räksmörgås'"]})
 
     assert_rows(frame, ['bbb'])

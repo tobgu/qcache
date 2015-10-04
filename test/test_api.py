@@ -71,17 +71,17 @@ class TestSingleServer(AsyncHTTPTestCase):
         assert response.code == 200
         assert from_csv(response.body) == [{'baz': '1', 'bar': '10'}]  # NB: Strings for numbers here
 
-    @pytest.mark.skipif(True, reason="JSON + unicode problem")
     def test_upload_json_query_json_unicode_characters(self):
         response = self.post_json('/dataset/abc', [{'foo': u'Iñtërnâtiônàližætiøn'}, {'foo': 'qux'}])
         assert response.code == 201
 
         response = self.query_json('/dataset/abc', {'where': ['==', 'foo', u'"Iñtërnâtiônàližætiøn"']})
         assert response.code == 200
-        assert json.loads(response.body) == [{'foo': u'Iñtërnâtiônàližætiøn'}]
+        response_data = json.loads(response.body)
+        assert type(response_data[0]['foo']) is unicode
+        assert response_data == [{'foo': u'Iñtërnâtiônàližætiøn'}]
 
     def test_upload_csv_query_csv_unicode_characters_encoded_as_utf8(self):
-        # TODO
         response = self.post_csv('/dataset/abc', [{'foo': u'Iñtërnâtiônàližætiønåäö'.encode('utf-8')}, {'foo': 'qux'}])
         assert response.code == 201
 
@@ -89,14 +89,24 @@ class TestSingleServer(AsyncHTTPTestCase):
         assert response.code == 200
         assert from_csv(response.body) == [{'foo': u'Iñtërnâtiônàližætiønåäö'.encode('utf-8')}]
 
-    def test_upload_and_query_json_unicode_characters_encoded_as_utf8(self):
+    def test_upload_csv_query_json_unicode_characters_encoded_as_utf8(self):
         response = self.post_csv('/dataset/abc', [{'foo': u'Iñtërnâtiônàližætiønåäö'.encode('utf-8')}, {'foo': 'qux'}])
         assert response.code == 201
 
         response = self.query_json('/dataset/abc', {'where': ['==', 'foo', u'"Iñtërnâtiônàližætiønåäö"']})
+
         assert response.code == 200
+        response_data = json.loads(response.body)
+        assert type(response_data[0]['foo']) is unicode
         assert json.loads(response.body) == [{'foo': u'Iñtërnâtiônàližætiønåäö'}]
 
+    def test_upload_invalid_content_type(self):
+        response = self.fetch('/dataset/abc', method='POST', body='', headers={'Content-Type': 'text/html'})
+        assert response.code == 415
+
+    def test_upload_invalid_charset(self):
+        response = self.fetch('/dataset/abc', method='POST', body='', headers={'Content-Type': 'text/csv; charset=iso-123'})
+        assert response.code == 415
 
 # Error cases:
 # - Malformed query
