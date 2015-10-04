@@ -125,3 +125,11 @@ def query(dataframe, q):
     sliced_df = do_slice(ordered_df, q.get('offset'), q.get('limit'))
     projected_df = project(sliced_df, q.get('select'))
     return projected_df
+
+
+class PandasDataset(object):
+    def __init__(self, dataframe):
+        self.dataframe = dataframe
+
+    def query(self, q):
+        return query(self.dataframe, q)

@@ -32,15 +32,12 @@ MIT licensed. See the bundled `LICENSE <https://github.com/tobgu/qcache/blob/mas
 
 TODO
 ----
-* Query language for filtering, sorting and pagination
+x * Query language for filtering, sorting and pagination
+* Support both JSON and CSV input/output
 * Cache eviction
   - By age for mutable data
   - By size (number of lines and or bytes)
-* Support both JSON and CSV input/output
-* Call the right server using some sort of stable hashing?
-  - Use a fixed number of cache servers to start with
 * Configurable URL prefix
-* One thread/process per container
 * Assure that memory usage is stable over time
 * Implement both GET and POST to query (using .../q/)
 * Make it possible to execute multiple queries in one request (qs=,/qs/)
@@ -51,6 +48,12 @@ TODO
 * Counters available at special URL (cache hits direct and indirect, misses, dataset size distribution, exception count)
 * Counters to influx DB
 * Exceptions to Sentry
+* SSL and basic authentication
+* Call the right server using some sort of stable hashing?
+  - Use a fixed number of cache servers to start with
+  - Cluster configuration, list of servers. May have different weights depending on configuration.
+  - Client side or server side proxying
+* Possibility to specify indexes when uploading data (how do the indexes affect size? write performance? read performance?)
 
 Links
 -----
