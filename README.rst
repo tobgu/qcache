@@ -33,7 +33,7 @@ MIT licensed. See the bundled `LICENSE <https://github.com/tobgu/qcache/blob/mas
 TODO
 ----
 x * Query language for filtering, sorting and pagination
-* Support both JSON and CSV input/output
+x * Support both JSON and CSV input/output
 * Cache eviction
   - By age for mutable data
   - By size (number of lines and or bytes)

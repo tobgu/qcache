@@ -1,6 +1,5 @@
 # coding=utf-8
 from StringIO import StringIO
-import json
 import pandas
 import pytest
 from qcache.query import query, MalformedQueryException

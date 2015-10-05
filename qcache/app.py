@@ -12,6 +12,7 @@ class ResponseCode(object):
     OK = 200
     CREATED = 201
 
+    BAD_REQUEST = 400
     NOT_FOUND = 404
     NOT_ACCEPTABLE = 406
     UNSUPPORTED_MEDIA_TYPE = 415
@@ -78,8 +79,17 @@ class DatasetHandler(RequestHandler):
             raise HTTPError(ResponseCode.NOT_FOUND)
 
         q = self.get_argument('q', default='')
+
+        try:
+            q_dict = json.loads(q)
+        except ValueError:
+            raise HTTPError(ResponseCode.BAD_REQUEST)
+
+        if not isinstance(q_dict, dict):
+            raise HTTPError(ResponseCode.BAD_REQUEST)
+
         df = self.key_to_dataset[dataset_key]
-        response = query(df, json.loads(q))
+        response = query(df, q_dict)
 
         self.set_header("Content-Type", "{content_type}; charset=utf-8".format(content_type=accept_type))
         if accept_type == CONTENT_TYPE_CSV:

@@ -1,6 +1,5 @@
 # coding=utf-8
 import json
-import pytest
 from tornado.httputil import url_concat
 from tornado.testing import AsyncHTTPTestCase
 import qcache.app as app
@@ -31,7 +30,7 @@ def from_csv(text):
     return list(csv.DictReader(input_data))
 
 
-class TestSingleServer(AsyncHTTPTestCase):
+class SharedTest(AsyncHTTPTestCase):
     def get_app(self):
         return app.make_app(url_prefix='')
 
@@ -50,6 +49,9 @@ class TestSingleServer(AsyncHTTPTestCase):
     def query_csv(self, url, query):
         url = url_concat(url, {'q': json.dumps(query)})
         return self.fetch(url, headers={'Accept': 'text/csv, application/json'})
+
+
+class TestBaseCases(SharedTest):
 
     def test_404_when_item_is_missing(self):
         response = self.fetch('/dataset/abc')
@@ -71,6 +73,8 @@ class TestSingleServer(AsyncHTTPTestCase):
         assert response.code == 200
         assert from_csv(response.body) == [{'baz': '1', 'bar': '10'}]  # NB: Strings for numbers here
 
+
+class TestCharacterEncoding(SharedTest):
     def test_upload_json_query_json_unicode_characters(self):
         response = self.post_json('/dataset/abc', [{'foo': u'Iñtërnâtiônàližætiøn'}, {'foo': 'qux'}])
         assert response.code == 201
@@ -109,10 +113,25 @@ class TestSingleServer(AsyncHTTPTestCase):
         response = self.fetch('/dataset/abc', method='POST', body='', headers={'Content-Type': 'text/csv; charset=iso-123'})
         assert response.code == 415
 
+
+class TestInvalidQueries(SharedTest):
+    def setUp(self):
+        super(TestInvalidQueries, self).setUp()
+        response = self.post_json('/dataset/abc', [{'foo': 1, 'bar': 10}, {'foo': 2, 'bar': 20}])
+        assert response.code == 201
+
+    def test_malformed_query_list_instead_of_dict(self):
+        response = self.query_json('/dataset/abc', ['where', ['==', 'foo', 1]])
+        assert response.code == 400
+
+    def test_malformed_query_json_not_possible_to_parse(self):
+        url = url_concat('/dataset/abc', {'q': 'foo'})
+        response = self.fetch(url, headers={'Accept': 'application/json, text/csv'})
+        assert response.code == 400
+
 # Error cases:
 # - Malformed query
 #   * Structure
-#   * Impossible to parse
 #   * Invalid function
 #   * Invalid operator
 #   * Missing column
