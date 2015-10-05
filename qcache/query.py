@@ -76,6 +76,15 @@ def project(dataframe, project_q):
         # Special case for count only, ~equal to SQL count(*)
         return DataFrame.from_dict({'count': [len(dataframe)]})
 
+    if type(project_q[0]) is list and project_q[0] and project_q[0][0] == 'distinct':
+        # Special case for distinct
+        args = {}
+        columns = project_q[0][1:]
+        if columns:
+            args['subset'] = columns
+
+        return dataframe.drop_duplicates(**args)
+
     aggregate_fns = {e[1]: e[0] for e in project_q if type(e) is list}
     if aggregate_fns:
         if not isinstance(dataframe, DataFrameGroupBy):

@@ -88,6 +88,16 @@ def test_select_subset_invalid_column(basic_frame):
         query(basic_frame, {'select': ['foof', 'baz']})
 
 
+def test_select_distinct_with_columns(basic_frame):
+    # Should not have any effect since all rows are unique with respect to all columns
+    frame = query(basic_frame, {'select': [['distinct']]})
+    assert_rows(frame, ['bbb', 'aaa', 'ccc'])
+
+
+def test_select_distinct_without_columns(basic_frame):
+    frame = query(basic_frame, {'select': [['distinct', 'qux']]})
+    assert_rows(frame, ['bbb', 'ccc'])
+
 ################ Aggregation #####################
 
 #TODO: More tests and error handling
@@ -174,7 +184,7 @@ ccc,"""
     assert_rows(frame, ['bbb'])
 
 
-def test_unicode_content_from_json():
+def test_unicode_content_from_dicts():
     data = [{'foo': 'aaa', 'bar': u'Iñtërnâtiônàližætiøn'}, {'foo': 'bbb', 'bar': u'räksmörgås'.encode(encoding='utf-8')}]
     input_frame = pandas.DataFrame.from_records(data)
     frame = query(input_frame, {'where': ["==", "bar", u"'räksmörgås'"]})
