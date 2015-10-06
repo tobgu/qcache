@@ -1,9 +1,12 @@
 # coding=utf-8
 from StringIO import StringIO
+import json
 import pandas
 import pytest
-from qcache.query import query, MalformedQueryException
+from qcache.query import query as qquery, MalformedQueryException
 
+def query(df, q):
+    return qquery(df, json.dumps(q))
 
 ######################### Filtering ##########################
 

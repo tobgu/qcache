@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
+import json
 from pandas import DataFrame
+from pandas.computation.ops import UndefinedVariableError
 from pandas.core.groupby import DataFrameGroupBy
 
 
@@ -9,6 +11,16 @@ class MalformedQueryException(Exception):
 
 def raise_malformed(message, q):
     raise MalformedQueryException(message + ': {q}'.format(q=q))
+
+
+def assert_integer(name, i):
+    if not isinstance(i, (int, long)):
+        raise_malformed('Invalid type for {name}'.format(name=name), i)
+
+
+def assert_list(name, l):
+    if not isinstance(l, list):
+        raise_malformed('Invalid format for {name}'.format(name=name), l)
 
 
 def build_filter(q):
@@ -55,6 +67,7 @@ def build_filter(q):
 
 def do_filter(dataframe, filter_q):
     if filter_q:
+        assert_list('where', filter_q)
         filter_str = build_filter(filter_q)
         return dataframe.query(filter_str)
 
@@ -65,12 +78,19 @@ def group_by(dataframe, group_by_q):
     if not group_by_q:
         return dataframe
 
-    return dataframe.groupby(group_by_q, as_index=False)
+    assert_list('where', group_by_q)
+
+    try:
+        return dataframe.groupby(group_by_q, as_index=False)
+    except KeyError:
+        raise_malformed('Group by column not in table', group_by_q)
 
 
 def project(dataframe, project_q):
     if not project_q:
         return dataframe
+
+    assert_list('project', project_q)
 
     if project_q == [['count']]:
         # Special case for count only, ~equal to SQL count(*)
@@ -92,9 +112,17 @@ def project(dataframe, project_q):
                 raise_malformed("Multiple aggregation functions without group by", project_q)
 
             # Intricate, apply the selected function to the selected column
-            arg, fn = next(iter(aggregate_fns.items()))
+            arg, fn_name = next(iter(aggregate_fns.items()))
             dataframe = dataframe[[arg]]
-            return DataFrame.from_dict({fn: [getattr(dataframe, fn)(axis=0)[0]]})
+
+            fn = getattr(dataframe, fn_name, None)
+            if not fn or not callable(fn):
+                raise_malformed('Unknown function', project_q)
+
+            result = fn(axis=0)[0]
+
+            # The response must be a data frame
+            return DataFrame.from_dict({fn_name: [result]})
 
         dataframe = dataframe.agg(aggregate_fns)
 
@@ -109,6 +137,10 @@ def order_by(dataframe, order_q):
     if not order_q:
         return dataframe
 
+    assert_list('order by', order_q)
+    if not all(isinstance(c, basestring) for c in order_q):
+        raise_malformed("Invalid order by format", order_q)
+
     columns = [e[1:] if e.startswith('-') else e for e in order_q]
     ascending = [not e.startswith('-') for e in order_q]
 
@@ -120,21 +152,34 @@ def order_by(dataframe, order_q):
 
 def do_slice(dataframe, offset, limit):
     if offset:
+        assert_integer('offset', offset)
         dataframe = dataframe[offset:]
 
     if limit:
+        assert_integer('limit', limit)
         dataframe = dataframe[:limit]
 
     return dataframe
 
 
-def query(dataframe, q):
-    filtered_df = do_filter(dataframe, q.get('where'))
-    grouped_df = group_by(filtered_df, q.get('group_by'))
-    ordered_df = order_by(grouped_df, q.get('order_by'))
-    sliced_df = do_slice(ordered_df, q.get('offset'), q.get('limit'))
-    projected_df = project(sliced_df, q.get('select'))
-    return projected_df
+def query(dataframe, q_json):
+    try:
+        q = json.loads(q_json)
+    except ValueError:
+        raise MalformedQueryException('Could not load JSON: {json}'.format(json=json))
+
+    if not isinstance(q, dict):
+        raise MalformedQueryException('Query must be a dictionary, not "{q}"'.format(q=q))
+
+    try:
+        filtered_df = do_filter(dataframe, q.get('where'))
+        grouped_df = group_by(filtered_df, q.get('group_by'))
+        ordered_df = order_by(grouped_df, q.get('order_by'))
+        sliced_df = do_slice(ordered_df, q.get('offset'), q.get('limit'))
+        projected_df = project(sliced_df, q.get('select'))
+        return projected_df
+    except UndefinedVariableError as e:
+        raise MalformedQueryException(e.message)
 
 
 class PandasDataset(object):

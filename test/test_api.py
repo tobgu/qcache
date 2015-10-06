@@ -120,21 +120,61 @@ class TestInvalidQueries(SharedTest):
         response = self.post_json('/dataset/abc', [{'foo': 1, 'bar': 10}, {'foo': 2, 'bar': 20}])
         assert response.code == 201
 
-    def test_malformed_query_list_instead_of_dict(self):
-        response = self.query_json('/dataset/abc', ['where', ['==', 'foo', 1]])
+    def do_invalid(self, q):
+        response = self.query_json('/dataset/abc', q)
+        assert response.code == 400
+        return response
+
+    def test_list_instead_of_dict(self):
+        self.do_invalid(['where', ['==', 'foo', 1]])
+
+    def test_json_not_possible_to_parse(self):
+        response = self.fetch(url_concat('/dataset/abc', {'q': 'foo'}))
         assert response.code == 400
 
-    def test_malformed_query_json_not_possible_to_parse(self):
-        url = url_concat('/dataset/abc', {'q': 'foo'})
-        response = self.fetch(url, headers={'Accept': 'application/json, text/csv'})
-        assert response.code == 400
+    def test_invalid_filter_format(self):
+        response = self.do_invalid({'where': ['==', 'foo', 1, 2]})
+        assert 'Invalid number of arguments' in json.loads(response.body)['error']
+
+    def test_unknown_filter_operator(self):
+        response = self.query_json('/dataset/abc', {'where': ['<>', 'foo', 1]})
+        assert 'Unknown operator' in json.loads(response.body)['error']
+
+    def test_unknown_select_operator(self):
+        response = self.query_json('/dataset/abc', {'select': [['baz', 'foo']]})
+        assert 'Unknown function' in json.loads(response.body)['error']
+
+    def test_missing_column_in_select(self):
+        response = self.query_json('/dataset/abc', {'select': ['baz', 'foo']})
+        assert 'Selected column not in table' in json.loads(response.body)['error']
+
+    def test_missing_column_in_filter(self):
+        response = self.query_json('/dataset/abc', {'where': ['>', 'baz', 1]})
+        assert 'is not defined' in json.loads(response.body)['error']
+
+    def test_missing_column_in_group_by(self):
+        response = self.query_json('/dataset/abc', {'group_by': ['baz']})
+        assert 'Group by column not in table' in json.loads(response.body)['error']
+
+    def test_missing_column_in_order_by(self):
+        response = self.query_json('/dataset/abc', {'order_by': ['baz']})
+        assert 'Order by column not in table' in json.loads(response.body)['error']
+
+    def test_malformed_order_by(self):
+        response = self.query_json('/dataset/abc', {'order_by': [['baz']]})
+        assert 'Invalid order by format' in json.loads(response.body)['error']
+
+    def test_wrong_type_for_offset(self):
+        response = self.query_json('/dataset/abc', {'offset': 4.3})
+        assert 'Invalid type' in json.loads(response.body)['error']
+
+    def test_group_by_not_list(self):
+        response = self.query_json('/dataset/abc', {'group_by': {'foo': 4.3}})
+        assert 'Invalid format' in json.loads(response.body)['error']
 
 # Error cases:
 # - Malformed query
-#   * Structure
-#   * Invalid function
-#   * Invalid operator
-#   * Missing column
+#   * Still some edge cases left in projection and filter.
 # - Malformed input data
 #   * No data sent in => error
 #   * Wrong format specified

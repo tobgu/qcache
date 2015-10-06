@@ -4,7 +4,7 @@ from StringIO import StringIO
 import pandas
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
-from qcache.query import query
+from qcache.query import query, MalformedQueryException
 import re
 
 
@@ -79,17 +79,13 @@ class DatasetHandler(RequestHandler):
             raise HTTPError(ResponseCode.NOT_FOUND)
 
         q = self.get_argument('q', default='')
-
-        try:
-            q_dict = json.loads(q)
-        except ValueError:
-            raise HTTPError(ResponseCode.BAD_REQUEST)
-
-        if not isinstance(q_dict, dict):
-            raise HTTPError(ResponseCode.BAD_REQUEST)
-
         df = self.key_to_dataset[dataset_key]
-        response = query(df, q_dict)
+        try:
+            response = query(df, q)
+        except MalformedQueryException as e:
+            self.write(json.dumps({'error': e.message}))
+            self.set_status(ResponseCode.BAD_REQUEST)
+            return
 
         self.set_header("Content-Type", "{content_type}; charset=utf-8".format(content_type=accept_type))
         if accept_type == CONTENT_TYPE_CSV:
