@@ -182,3 +182,36 @@ class TestInvalidQueries(SharedTest):
 #   * Non-uniform JSON and CSV
 # - Non fitting data
 #   * The data is too large to be fitted into memory of the current instance.
+
+
+class TestCacheEviction(SharedTest):
+    def get_app(self):
+        # A cache size of 200 is trimmed for the below test cases
+        return app.make_app(url_prefix='', max_cache_size=200)
+
+    def test_evicts_entry_when_too_much_space_occupied(self):
+        data = [{'some_longish_key': 'some_fairly_longish_value_that_needs_to_be_stuffed_in'},
+                {'some_longish_key': 'another_fairly_longish_value_that_also_should_be_fitted'}]
+
+        # Post data and assure available
+        response = self.post_json('/dataset/abc', data)
+        assert response.code == 201
+        assert self.query_json('/dataset/abc', {}).code == 200
+
+        response = self.post_json('/dataset/cba', data)
+        assert response.code == 201
+
+        # The old dataset has been evicted, the new one has taken its place
+        assert self.query_json('/dataset/abc', {}).code == 404
+        assert self.query_json('/dataset/cba', {}).code == 200
+
+    def test_can_insert_more_entries_with_smaller_values(self):
+        data = [{'some_longish_key': 'short'},
+                {'some_longish_key': 'another_short'}]
+
+        self.post_json('/dataset/abc', data)
+        self.post_json('/dataset/cba', data)
+
+        # Both datasets co-exist in the cache
+        assert self.query_json('/dataset/abc', {}).code == 200
+        assert self.query_json('/dataset/cba', {}).code == 200

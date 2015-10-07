@@ -37,22 +37,27 @@ x * Support both JSON and CSV input/output
 * Cache eviction
   - By age for mutable data
   - By size (number of lines and or bytes)
-* Configurable URL prefix
+  - LRU eviction
 * Assure that memory usage is stable over time
+
+* Call the right server using some sort of stable hashing?
+  - Use a fixed number of cache servers to start with
+  - Cluster configuration, list of servers. May have different weights depending on configuration.
+  - Client side or server side proxying
+* Discovery of dead servers is done when a request to the server is required
+
+* Stream data into dataframe rather than waiting for complete input
+* Streaming proxy
+* Configurable URL prefix
 * Implement both GET and POST to query (using .../q/)
 * Make it possible to execute multiple queries in one request (qs=,/qs/)
 * Make it possible to do explicit evict by DELETE
-* Discovery of dead servers is done when a request to the server is required
 * Allow post with data and query in one request, this will guarantee progress
   as long as the dataset fits in memory. {"query": ..., dataset: ...}
 * Counters available at special URL (cache hits direct and indirect, misses, dataset size distribution, exception count)
 * Counters to influx DB
 * Exceptions to Sentry
 * SSL and basic authentication
-* Call the right server using some sort of stable hashing?
-  - Use a fixed number of cache servers to start with
-  - Cluster configuration, list of servers. May have different weights depending on configuration.
-  - Client side or server side proxying
 * Possibility to specify indexes when uploading data (how do the indexes affect size? write performance? read performance?)
 
 Links

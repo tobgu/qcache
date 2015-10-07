@@ -4,6 +4,7 @@ from StringIO import StringIO
 import pandas
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
+from qcache.dataset_cache import DatasetCache
 from qcache.query import query, MalformedQueryException
 import re
 
@@ -16,20 +17,6 @@ class ResponseCode(object):
     NOT_FOUND = 404
     NOT_ACCEPTABLE = 406
     UNSUPPORTED_MEDIA_TYPE = 415
-
-
-class CacheItem(object):
-    def __init__(self, dataset):
-        self.creation_time = datetime.datetime.utcnow()
-        self.last_access_time = self.creation_time
-        self._dataset = dataset
-        self.access_count = 0
-
-    @property
-    def dataset(self):
-        self.last_access_time = datetime.datetime.utcnow()
-        self.access_count += 1
-        return self._dataset
 
 CONTENT_TYPE_JSON = 'application/json'
 CONTENT_TYPE_CSV = 'text/csv'
@@ -47,8 +34,8 @@ class UTF8JSONDecoder(json.JSONDecoder):
 
 
 class DatasetHandler(RequestHandler):
-    def initialize(self, key_to_dataset):
-        self.key_to_dataset = key_to_dataset
+    def initialize(self, dataset_cache):
+        self.dataset_cache = dataset_cache
 
     def accept_type(self):
         accept_types = [t.strip() for t in self.request.headers.get('Accept', CONTENT_TYPE_JSON).split(',')]
@@ -75,11 +62,11 @@ class DatasetHandler(RequestHandler):
 
     def get(self, dataset_key):
         accept_type = self.accept_type()
-        if not dataset_key in self.key_to_dataset:
+        if not dataset_key in self.dataset_cache:
             raise HTTPError(ResponseCode.NOT_FOUND)
 
         q = self.get_argument('q', default='')
-        df = self.key_to_dataset[dataset_key]
+        df = self.dataset_cache[dataset_key]
         try:
             response = query(df, q)
         except MalformedQueryException as e:
@@ -94,22 +81,27 @@ class DatasetHandler(RequestHandler):
             self.write(response.to_json(orient='records'))
 
     def post(self, dataset_key):
+        if dataset_key in self.dataset_cache:
+            del self.dataset_cache[dataset_key]
+
         content_type = self.content_type()
         if content_type == CONTENT_TYPE_CSV:
+            self.dataset_cache.ensure_free(len(self.request.body))
             df = pandas.read_csv(StringIO(self.request.body))
         else:
             # This is a waste of CPU cycles, first the JSON decoder decodes all strings
             # from UTF-8 then we immediately encode them back into UTF-8. Couldn't
             # find an easy solution to this though.
+            self.dataset_cache.ensure_free(len(self.request.body)/2)
             data = json.loads(self.request.body, cls=UTF8JSONDecoder)
             df = pandas.DataFrame.from_records(data)
 
-        self.key_to_dataset[dataset_key] = df
+        self.dataset_cache[dataset_key] = df
         self.set_status(ResponseCode.CREATED)
         self.write("")
 
 
-def make_app(url_prefix='/qcache', debug=False):
+def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000):
     # /dataset/{key}
     # /dataset/{namespace}/{key}
     # /stat
@@ -118,7 +110,8 @@ def make_app(url_prefix='/qcache', debug=False):
     #
     return Application([
         url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)".format(url_prefix=url_prefix),
-            DatasetHandler, dict(key_to_dataset={}), name="dataset")
+            DatasetHandler, dict(dataset_cache=DatasetCache(max_size=max_cache_size)),
+            name="dataset")
     ], debug=debug)
 
 
