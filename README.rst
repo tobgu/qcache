@@ -60,6 +60,9 @@ x * Support both JSON and CSV input/output
 * SSL and basic authentication
 * Possibility to specify indexes when uploading data (how do the indexes affect size? write performance? read performance?)
 
+* Possibility to upload files as a way to prime the cache without taking up memory.
+
+
 Links
 -----
 * http://stackoverflow.com/questions/23886030/how-to-post-a-very-long-url-using-python-requests-module

@@ -103,7 +103,8 @@ def project(dataframe, project_q):
         if columns:
             args['subset'] = columns
 
-        return dataframe.drop_duplicates(**args)
+        ds = dataframe.drop_duplicates(**args)
+        return ds
 
     aggregate_fns = {e[1]: e[0] for e in project_q if type(e) is list}
     if aggregate_fns:
@@ -175,9 +176,9 @@ def query(dataframe, q_json):
         filtered_df = do_filter(dataframe, q.get('where'))
         grouped_df = group_by(filtered_df, q.get('group_by'))
         ordered_df = order_by(grouped_df, q.get('order_by'))
-        sliced_df = do_slice(ordered_df, q.get('offset'), q.get('limit'))
-        projected_df = project(sliced_df, q.get('select'))
-        return projected_df
+        projected_df = project(ordered_df, q.get('select'))
+        sliced_df = do_slice(projected_df, q.get('offset'), q.get('limit'))
+        return sliced_df
     except UndefinedVariableError as e:
         raise MalformedQueryException(e.message)
 

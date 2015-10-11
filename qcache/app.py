@@ -1,6 +1,6 @@
 import json
-import datetime
 from StringIO import StringIO
+import gc
 import pandas
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
@@ -33,9 +33,15 @@ class UTF8JSONDecoder(json.JSONDecoder):
             yield {k: v.encode(encoding='utf-8') if isinstance(v, unicode) else v for k, v in r.items()}
 
 
+class AppState(object):
+    def __init__(self):
+        self.query_count = 0
+
+
 class DatasetHandler(RequestHandler):
-    def initialize(self, dataset_cache):
+    def initialize(self, dataset_cache, state):
         self.dataset_cache = dataset_cache
+        self.state = state
 
     def accept_type(self):
         accept_types = [t.strip() for t in self.request.headers.get('Accept', CONTENT_TYPE_JSON).split(',')]
@@ -80,6 +86,16 @@ class DatasetHandler(RequestHandler):
         else:
             self.write(response.to_json(orient='records'))
 
+        self.post_query_processing()
+
+    def post_query_processing(self):
+        if self.state.query_count % 10 == 0:
+            # Run a collect every now and then. It reduces the process memory consumption
+            # considerably but always doing it will impact query performance negatively.
+            gc.collect()
+
+        self.state.query_count += 1
+
     def post(self, dataset_key):
         if dataset_key in self.dataset_cache:
             del self.dataset_cache[dataset_key]
@@ -110,13 +126,13 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000):
     #
     return Application([
         url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)".format(url_prefix=url_prefix),
-            DatasetHandler, dict(dataset_cache=DatasetCache(max_size=max_cache_size)),
+            DatasetHandler, dict(dataset_cache=DatasetCache(max_size=max_cache_size), state=AppState()),
             name="dataset")
     ], debug=debug)
 
 
 def run():
-    make_app(debug=True).listen(8888, max_buffer_size=1104857600)
+    make_app(debug=True).listen(8888, max_buffer_size=1000000000)
     IOLoop.current().start()
 
 if __name__ == "__main__":

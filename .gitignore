@@ -43,3 +43,4 @@ docs/_build
 README.html
 
 .cache
+ps_mem
