@@ -117,22 +117,27 @@ class DatasetHandler(RequestHandler):
         self.write("")
 
 
+class StatusHandler(RequestHandler):
+    def get(self):
+        self.write("OK")
+
+
 def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000):
     # /dataset/{key}
     # /dataset/{namespace}/{key}
     # /stat
     # /stat/{namespace}
     #
-    #
     return Application([
         url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)".format(url_prefix=url_prefix),
             DatasetHandler, dict(dataset_cache=DatasetCache(max_size=max_cache_size), state=AppState()),
-            name="dataset")
+            name="dataset"),
+        url(r"{url_prefix}/status".format(url_prefix=url_prefix), StatusHandler, {}, name="status")
     ], debug=debug)
 
 
-def run():
-    make_app(debug=True).listen(8888, max_buffer_size=1000000000)
+def run(port=8888):
+    make_app(debug=True).listen(port, max_buffer_size=1000000000)
     IOLoop.current().start()
 
 if __name__ == "__main__":

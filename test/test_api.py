@@ -215,3 +215,11 @@ class TestCacheEviction(SharedTest):
         # Both datasets co-exist in the cache
         assert self.query_json('/dataset/abc', {}).code == 200
         assert self.query_json('/dataset/cba', {}).code == 200
+
+
+class TestStatusEndpoint(SharedTest):
+    def test_status_endpoint_returns_200_ok(self):
+        response = self.fetch('/status')
+
+        assert response.code == 200
+        assert response.body == "OK"

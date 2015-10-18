@@ -2,10 +2,11 @@
 # -*- coding: utf-8 -*-
 '''qcache
 Usage:
-  qcache -h | --help
+  qcache [-hsp PORT]
 
 Options:
   -h --help     Show this screen.
+  -p --port     Port to bind to
 '''
 
 # '''qcache
@@ -36,8 +37,9 @@ __license__ = "MIT"
 
 def main():
     '''Main entry point for the qcache server.'''
-    # args = docopt(__doc__, version=__version__)
-    run()
+    args = docopt(__doc__, version=__version__)
+    port = args['PORT'] or 8888
+    run(port=port)
 
 if __name__ == '__main__':
     main()

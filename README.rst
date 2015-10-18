@@ -32,20 +32,22 @@ MIT licensed. See the bundled `LICENSE <https://github.com/tobgu/qcache/blob/mas
 
 TODO
 ----
-x * Query language for filtering, sorting and pagination
-x * Support both JSON and CSV input/output
+
+0.1.0 (first release) target
+----------------------------
+- Server side statistics accessible over HTTP
+- Configurable cache size
+- Configurable max data age
+- DELETE hint for key
+- Type indicators for columns in custom header when uploading data
+- Move 'distinct' to own key in query
+
+Longer term targets
+-------------------
 * Cache eviction
   - By age for mutable data
   - By size (number of lines and or bytes)
-  - LRU eviction
-* Assure that memory usage is stable over time
-
-* Call the right server using some sort of stable hashing?
-  - Use a fixed number of cache servers to start with
-  - Cluster configuration, list of servers. May have different weights depending on configuration.
-  - Client side or server side proxying
-* Discovery of dead servers is done when a request to the server is required
-
+  X - LRU eviction
 * Stream data into dataframe rather than waiting for complete input
 * Streaming proxy
 * Configurable URL prefix
@@ -59,7 +61,6 @@ x * Support both JSON and CSV input/output
 * Exceptions to Sentry
 * SSL and basic authentication
 * Possibility to specify indexes when uploading data (how do the indexes affect size? write performance? read performance?)
-
 * Possibility to upload files as a way to prime the cache without taking up memory.
 
 
@@ -70,15 +71,6 @@ Links
 * http://stackoverflow.com/questions/16524545/how-to-write-a-web-proxy-in-python
 * https://groups.google.com/forum/#!topic/python-tornado/TB_6oKBmdlA
 * http://stackoverflow.com/questions/16626058/what-is-the-performance-impact-of-non-unique-indexes-in-pandas
-
-Configuration file
-------------------
-* Maximum size
- - Get the size of data frame: df.values.nbytes + df.index.nbytes + df.columns.nbytes
-* Maximum age
- - Seconds
-* List of hosts in the "cluster"
- - IP address and port number
 
 Using cURL to test
 ------------------
