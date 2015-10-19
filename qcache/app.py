@@ -116,6 +116,12 @@ class DatasetHandler(RequestHandler):
         self.set_status(ResponseCode.CREATED)
         self.write("")
 
+    def delete(self, dataset_key):
+        if dataset_key in self.dataset_cache:
+            del self.dataset_cache[dataset_key]
+
+        self.write("")
+
 
 class StatusHandler(RequestHandler):
     def get(self):

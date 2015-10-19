@@ -223,3 +223,13 @@ class TestStatusEndpoint(SharedTest):
 
         assert response.code == 200
         assert response.body == "OK"
+
+
+class TestDatasetDelete(SharedTest):
+    def test_post_data_then_delete(self):
+        data = [{'some_key': '123456'}]
+        self.post_json('/dataset/abc', data)
+
+        assert self.query_json('/dataset/abc', {}).code == 200
+        assert self.fetch('/dataset/abc', method='DELETE').code == 200
+        assert self.query_json('/dataset/abc', {}).code == 404
