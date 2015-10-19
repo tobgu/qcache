@@ -7,10 +7,10 @@ from setuptools.command.test import test as TestCommand
 
 REQUIRES = [
     'docopt',
-    'numpy==1.9.3',
-    'numexpr==2.4.4',
-    'pandas==0.16.2',
-    'tornado==4.2.1',
+    'numpy',
+    'numexpr',
+    'pandas',
+    'tornado',
 ]
 
 class PyTest(TestCommand):
