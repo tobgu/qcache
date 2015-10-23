@@ -1,9 +1,11 @@
+from collections import deque
 import json
 from StringIO import StringIO
 import gc
 import pandas
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
+import time
 from qcache.dataset_cache import DatasetCache
 from qcache.query import query, MalformedQueryException
 import re
@@ -38,10 +40,41 @@ class AppState(object):
         self.query_count = 0
 
 
+def encode_deque(obj):
+    if isinstance(obj, deque):
+        return list(obj)
+
+    raise TypeError(repr(obj) + " is not JSON serializable")
+
+
+class Statistics(object):
+    def __init__(self):
+        self.reset()
+
+    def inc(self, stat_name, count=1):
+        if stat_name not in self.stats:
+            self.stats[stat_name] = 0
+
+        self.stats[stat_name] += count
+
+    def append(self, stat_name, value):
+        if stat_name not in self.stats:
+            self.stats[stat_name] = deque(maxlen=1000)
+
+        self.stats[stat_name].append(value)
+
+    def reset(self):
+        self.stats = {}
+
+    def to_json(self):
+        return json.dumps(self.stats, default=encode_deque)
+
+
 class DatasetHandler(RequestHandler):
-    def initialize(self, dataset_cache, state):
+    def initialize(self, dataset_cache, state, stats):
         self.dataset_cache = dataset_cache
         self.state = state
+        self.stats = stats
 
     def accept_type(self):
         accept_types = [t.strip() for t in self.request.headers.get('Accept', CONTENT_TYPE_JSON).split(',')]
@@ -67,9 +100,15 @@ class DatasetHandler(RequestHandler):
         return content_type
 
     def get(self, dataset_key):
+        t0 = time.time()
         accept_type = self.accept_type()
-        self.dataset_cache.evict_if_too_old(dataset_key)
         if dataset_key not in self.dataset_cache:
+            self.stats.inc('miss_count')
+            raise HTTPError(ResponseCode.NOT_FOUND)
+
+        if self.dataset_cache.evict_if_too_old(dataset_key):
+            self.stats.inc('miss_count')
+            self.stats.inc('age_evict_count')
             raise HTTPError(ResponseCode.NOT_FOUND)
 
         q = self.get_argument('q', default='')
@@ -88,6 +127,8 @@ class DatasetHandler(RequestHandler):
             self.write(response.to_json(orient='records'))
 
         self.post_query_processing()
+        self.stats.inc('hit_count')
+        self.stats.append('query_durations', time.time() - t0)
 
     def post_query_processing(self):
         if self.state.query_count % 10 == 0:
@@ -98,23 +139,29 @@ class DatasetHandler(RequestHandler):
         self.state.query_count += 1
 
     def post(self, dataset_key):
+        t0 = time.time()
         if dataset_key in self.dataset_cache:
+            self.stats.inc('replace_count')
             del self.dataset_cache[dataset_key]
 
         content_type = self.content_type()
         if content_type == CONTENT_TYPE_CSV:
-            self.dataset_cache.ensure_free(len(self.request.body))
+            evict_count = self.dataset_cache.ensure_free(len(self.request.body))
             df = pandas.read_csv(StringIO(self.request.body))
         else:
             # This is a waste of CPU cycles, first the JSON decoder decodes all strings
             # from UTF-8 then we immediately encode them back into UTF-8. Couldn't
             # find an easy solution to this though.
-            self.dataset_cache.ensure_free(len(self.request.body)/2)
+            evict_count = self.dataset_cache.ensure_free(len(self.request.body)/2)
             data = json.loads(self.request.body, cls=UTF8JSONDecoder)
             df = pandas.DataFrame.from_records(data)
 
         self.dataset_cache[dataset_key] = df
         self.set_status(ResponseCode.CREATED)
+        self.stats.inc('size_evict_count', count=evict_count)
+        self.stats.inc('store_count')
+        self.stats.append('store_row_counts', len(df))
+        self.stats.append('store_durations', time.time() - t0)
         self.write("")
 
     def delete(self, dataset_key):
@@ -129,18 +176,32 @@ class StatusHandler(RequestHandler):
         self.write("OK")
 
 
+class StatisticsHandler(RequestHandler):
+    def initialize(self, stats):
+        self.stats = stats
+
+    def get(self):
+        self.set_header("Content-Type", "application/json; charset=utf-8")
+        self.write(self.stats.to_json())
+        self.stats.reset()
+
+
 def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_age=0):
     # /dataset/{key}
     # /dataset/{namespace}/{key}
     # /stat
     # /stat/{namespace}
     #
+    stats = Statistics()
     return Application([
         url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)".format(url_prefix=url_prefix),
             DatasetHandler,
-            dict(dataset_cache=DatasetCache(max_size=max_cache_size, max_age=max_age), state=AppState()),
+            dict(dataset_cache=DatasetCache(max_size=max_cache_size, max_age=max_age),
+                 state=AppState(),
+                 stats=stats),
             name="dataset"),
-        url(r"{url_prefix}/status".format(url_prefix=url_prefix), StatusHandler, {}, name="status")
+        url(r"{url_prefix}/status".format(url_prefix=url_prefix), StatusHandler, {}, name="status"),
+        url(r"{url_prefix}/statistics".format(url_prefix=url_prefix), StatisticsHandler, dict(stats=stats), name="statistics")
     ], debug=debug)
 
 

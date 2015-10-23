@@ -51,6 +51,11 @@ class SharedTest(AsyncHTTPTestCase):
         url = url_concat(url, {'q': json.dumps(query)})
         return self.fetch(url, headers={'Accept': 'text/csv, application/json'})
 
+    def get_statistics(self):
+        response = self.fetch('/statistics')
+        assert response.code == 200
+        return json.loads(response.body)
+
 
 class TestBaseCases(SharedTest):
 
@@ -205,6 +210,21 @@ class TestCacheEvictionOnSize(SharedTest):
         # The old dataset has been evicted, the new one has taken its place
         assert self.query_json('/dataset/abc', {}).code == 404
         assert self.query_json('/dataset/cba', {}).code == 200
+
+        # Check statistics
+        stats = self.get_statistics()
+
+        assert stats['hit_count'] == 2
+        assert stats['miss_count'] == 1
+        assert stats['size_evict_count'] == 1
+        assert stats['store_count'] == 2
+        assert len(stats['store_durations']) == 2
+        assert len(stats['store_row_counts']) == 2
+        assert sum(stats['store_row_counts']) == 4
+        assert len(stats['query_durations']) == 2
+
+        # Check stats again, this time it should have been cleared
+        assert self.get_statistics() == {}
 
     def test_can_insert_more_entries_with_smaller_values(self):
         data = [{'some_longish_key': 'short'},
