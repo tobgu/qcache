@@ -2,6 +2,7 @@
 import json
 from tornado.httputil import url_concat
 from tornado.testing import AsyncHTTPTestCase
+from freezegun import freeze_time
 import qcache.app as app
 import csv
 from StringIO import StringIO
@@ -184,7 +185,7 @@ class TestInvalidQueries(SharedTest):
 #   * The data is too large to be fitted into memory of the current instance.
 
 
-class TestCacheEviction(SharedTest):
+class TestCacheEvictionOnSize(SharedTest):
     def get_app(self):
         # A cache size of 200 is trimmed for the below test cases
         return app.make_app(url_prefix='', max_cache_size=200)
@@ -215,6 +216,23 @@ class TestCacheEviction(SharedTest):
         # Both datasets co-exist in the cache
         assert self.query_json('/dataset/abc', {}).code == 200
         assert self.query_json('/dataset/cba', {}).code == 200
+
+
+class TestCacheEvictionOnAge(SharedTest):
+    def get_app(self):
+        # A cache size of 200 is trimmed for the below test cases
+        return app.make_app(url_prefix='', max_age=5)
+
+    def test_evicts_dataset_when_data_too_old(self):
+        with freeze_time('2015-10-22 00:00:00'):
+            data = [{'some_longish_key': 'short'}]
+            self.post_json('/dataset/abc', data)
+
+        with freeze_time('2015-10-22 00:00:04'):
+            assert self.query_json('/dataset/abc', {}).code == 200
+
+        with freeze_time('2015-10-22 00:00:06'):
+            assert self.query_json('/dataset/abc', {}).code == 404
 
 
 class TestStatusEndpoint(SharedTest):

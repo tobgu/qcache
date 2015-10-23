@@ -3,12 +3,13 @@
 '''QCache
 
 Usage:
-  qcache  [-h] [--port=PORT] [--size=MAX_SIZE]
+  qcache  [-h] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE]
 
 Options:
   -h --help                     Show this screen
   -p PORT --port=PORT           Port [default: 8888]
-  -s MAX_SIZE --size=MAX_SIZE   Max size [default: 1000000000]
+  -s MAX_SIZE --size=MAX_SIZE   Max cache size, bytes [default: 1000000000]
+  -a MAX_AGE --age=MAX_AGE      Max age of cached item, seconds. 0 = never expire. [default: 0]
 '''
 
 from docopt import docopt
@@ -24,7 +25,9 @@ def main():
     Main entry point for the qcache server.
     """
     args = docopt(__doc__, version=__version__)
-    run(port=args['--port'], max_cache_size=args['--size'])
+
+    # Should be possible to solve this without casting to int...
+    run(port=int(args['--port']), max_cache_size=int(args['--size']), max_age=int(args['--age']))
 
 if __name__ == '__main__':
     main()

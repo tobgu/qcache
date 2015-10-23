@@ -36,8 +36,6 @@ TODO
 0.1.0 (first release) target
 ----------------------------
 - Server side statistics accessible over HTTP
-- Configurable cache size
-- Configurable max data age
 - Type indicators for columns in custom header when uploading data
 - Move 'distinct' to own key in query
 

@@ -1,15 +1,15 @@
-import datetime
+from datetime import datetime, timedelta
 
 class CacheItem(object):
     def __init__(self, dataset):
-        self.creation_time = datetime.datetime.utcnow()
+        self.creation_time = datetime.utcnow()
         self.last_access_time = self.creation_time
         self._dataset = dataset
         self.access_count = 0
 
     @property
     def dataset(self):
-        self.last_access_time = datetime.datetime.utcnow()
+        self.last_access_time = datetime.utcnow()
         self.access_count += 1
         return self._dataset
 
@@ -20,16 +20,24 @@ class CacheItem(object):
 
 
 class DatasetCache(object):
-    def __init__(self, max_size):
+    def __init__(self, max_size, max_age):
         self.max_size = max_size
+        self.max_age = timedelta(seconds=max_age)
         self._cache_dict = {}
 
     @property
     def size(self):
         return sum(df.size for df in self._cache_dict.values())
 
-    def __contains__(self, item):
-        return item in self._cache_dict
+    def has_expired(self, item):
+        return self.max_age and datetime.utcnow() > item.creation_time + self.max_age
+
+    def evict_if_too_old(self, key):
+        if key in self and self.has_expired(self._cache_dict[key]):
+            del self[key]
+
+    def __contains__(self, key):
+        return key in self._cache_dict
 
     def __getitem__(self, item):
         return self._cache_dict[item].dataset

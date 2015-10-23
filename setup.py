@@ -76,6 +76,7 @@ setup(
             "qcache = qcache:main"
         ]
     },
-    tests_require=['pytest'],
+    tests_require=['pytest',
+                   'freezegun'],
     cmdclass={'test': PyTest}
 )

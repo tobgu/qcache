@@ -68,7 +68,8 @@ class DatasetHandler(RequestHandler):
 
     def get(self, dataset_key):
         accept_type = self.accept_type()
-        if not dataset_key in self.dataset_cache:
+        self.dataset_cache.evict_if_too_old(dataset_key)
+        if dataset_key not in self.dataset_cache:
             raise HTTPError(ResponseCode.NOT_FOUND)
 
         q = self.get_argument('q', default='')
@@ -128,7 +129,7 @@ class StatusHandler(RequestHandler):
         self.write("OK")
 
 
-def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000):
+def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_age=0):
     # /dataset/{key}
     # /dataset/{namespace}/{key}
     # /stat
@@ -136,15 +137,17 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000):
     #
     return Application([
         url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)".format(url_prefix=url_prefix),
-            DatasetHandler, dict(dataset_cache=DatasetCache(max_size=max_cache_size), state=AppState()),
+            DatasetHandler,
+            dict(dataset_cache=DatasetCache(max_size=max_cache_size, max_age=max_age), state=AppState()),
             name="dataset"),
         url(r"{url_prefix}/status".format(url_prefix=url_prefix), StatusHandler, {}, name="status")
     ], debug=debug)
 
 
-def run(port=8888, max_cache_size=1000000000):
-    print "Starting on port %s, max cache size %s bytes" % (port, max_cache_size)
-    make_app(debug=True, max_cache_size=max_cache_size).listen(port, max_buffer_size=max_cache_size)
+def run(port=8888, max_cache_size=1000000000, max_age=0):
+    print("Starting on port {port}, max cache size {max_cache_size} bytes, max age {max_age} seconds".format(
+        port=port, max_cache_size=max_cache_size, max_age=max_age))
+    make_app(debug=True, max_cache_size=max_cache_size, max_age=max_age).listen(port, max_buffer_size=max_cache_size)
     IOLoop.current().start()
 
 if __name__ == "__main__":
