@@ -92,12 +92,12 @@ def test_select_subset_invalid_column(basic_frame):
 
 def test_select_distinct_without_columns(basic_frame):
     # Should not have any effect since all rows are unique with respect to all columns
-    frame = query(basic_frame, {'select': [['distinct']]})
+    frame = query(basic_frame, {'distinct': []})
     assert_rows(frame, ['bbb', 'aaa', 'ccc'])
 
 
 def test_select_distinct_with_columns(basic_frame):
-    frame = query(basic_frame, {'select': [['distinct', 'qux']]})
+    frame = query(basic_frame, {'distinct': ['qux']})
     assert_rows(frame, ['bbb', 'ccc'])
 
 ################ Aggregation #####################

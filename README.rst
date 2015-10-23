@@ -36,7 +36,6 @@ TODO
 0.1.0 (first release) target
 ----------------------------
 - Type indicators for columns in custom header when uploading data
-- Move 'distinct' to own key in query
 
 Longer term targets
 -------------------

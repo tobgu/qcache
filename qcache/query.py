@@ -96,16 +96,6 @@ def project(dataframe, project_q):
         # Special case for count only, ~equal to SQL count(*)
         return DataFrame.from_dict({'count': [len(dataframe)]})
 
-    if type(project_q[0]) is list and project_q[0] and project_q[0][0] == 'distinct':
-        # Special case for distinct
-        args = {}
-        columns = project_q[0][1:]
-        if columns:
-            args['subset'] = columns
-
-        ds = dataframe.drop_duplicates(**args)
-        return ds
-
     aggregate_fns = {e[1]: e[0] for e in project_q if type(e) is list}
     if aggregate_fns:
         if not isinstance(dataframe, DataFrameGroupBy):
@@ -163,6 +153,17 @@ def do_slice(dataframe, offset, limit):
     return dataframe
 
 
+def distinct(dataframe, columns):
+    if columns is None:
+        return dataframe
+
+    args = {}
+    if columns:
+        args['subset'] = columns
+
+    return dataframe.drop_duplicates(**args)
+
+
 def query(dataframe, q_json):
     try:
         q = json.loads(q_json)
@@ -176,7 +177,8 @@ def query(dataframe, q_json):
         filtered_df = do_filter(dataframe, q.get('where'))
         grouped_df = group_by(filtered_df, q.get('group_by'))
         ordered_df = order_by(grouped_df, q.get('order_by'))
-        projected_df = project(ordered_df, q.get('select'))
+        distinct_df = distinct(ordered_df, q.get('distinct'))
+        projected_df = project(distinct_df, q.get('select'))
         sliced_df = do_slice(projected_df, q.get('offset'), q.get('limit'))
         return sliced_df
     except UndefinedVariableError as e:
