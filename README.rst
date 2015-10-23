@@ -38,7 +38,6 @@ TODO
 - Server side statistics accessible over HTTP
 - Configurable cache size
 - Configurable max data age
-- DELETE hint for key
 - Type indicators for columns in custom header when uploading data
 - Move 'distinct' to own key in query
 

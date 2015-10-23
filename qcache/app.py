@@ -142,8 +142,9 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000):
     ], debug=debug)
 
 
-def run(port=8888):
-    make_app(debug=True).listen(port, max_buffer_size=1000000000)
+def run(port=8888, max_cache_size=1000000000):
+    print "Starting on port %s, max cache size %s bytes" % (port, max_cache_size)
+    make_app(debug=True, max_cache_size=max_cache_size).listen(port, max_buffer_size=max_cache_size)
     IOLoop.current().start()
 
 if __name__ == "__main__":
