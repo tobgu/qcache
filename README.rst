@@ -39,10 +39,6 @@ TODO
 
 Longer term targets
 -------------------
-* Cache eviction
-  - By age for mutable data
-  - By size (number of lines and or bytes)
-  X - LRU eviction
 * Stream data into dataframe rather than waiting for complete input
 * Streaming proxy
 * Configurable URL prefix
@@ -52,8 +48,7 @@ Longer term targets
 * Allow post with data and query in one request, this will guarantee progress
   as long as the dataset fits in memory. {"query": ..., dataset: ...}
 * Counters available at special URL (cache hits direct and indirect, misses, dataset size distribution, exception count)
-* Counters to influx DB
-* Exceptions to Sentry
+* Exceptions to Sentry?
 * SSL and basic authentication
 * Possibility to specify indexes when uploading data (how do the indexes affect size? write performance? read performance?)
 * Possibility to upload files as a way to prime the cache without taking up memory.

@@ -9,6 +9,7 @@ import time
 from qcache.dataset_cache import DatasetCache
 from qcache.query import query, MalformedQueryException
 import re
+from qcache.statistics import Statistics
 
 
 class ResponseCode(object):
@@ -38,36 +39,6 @@ class UTF8JSONDecoder(json.JSONDecoder):
 class AppState(object):
     def __init__(self):
         self.query_count = 0
-
-
-def encode_deque(obj):
-    if isinstance(obj, deque):
-        return list(obj)
-
-    raise TypeError(repr(obj) + " is not JSON serializable")
-
-
-class Statistics(object):
-    def __init__(self):
-        self.reset()
-
-    def inc(self, stat_name, count=1):
-        if stat_name not in self.stats:
-            self.stats[stat_name] = 0
-
-        self.stats[stat_name] += count
-
-    def append(self, stat_name, value):
-        if stat_name not in self.stats:
-            self.stats[stat_name] = deque(maxlen=1000)
-
-        self.stats[stat_name].append(value)
-
-    def reset(self):
-        self.stats = {}
-
-    def to_json(self):
-        return json.dumps(self.stats, default=encode_deque)
 
 
 class DatasetHandler(RequestHandler):
@@ -186,13 +157,13 @@ class StatisticsHandler(RequestHandler):
         self.stats.reset()
 
 
-def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_age=0):
+def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000):
     # /dataset/{key}
     # /dataset/{namespace}/{key}
     # /stat
     # /stat/{namespace}
     #
-    stats = Statistics()
+    stats = Statistics(buffer_size=statistics_buffer_size)
     return Application([
         url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)".format(url_prefix=url_prefix),
             DatasetHandler,
@@ -205,10 +176,12 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
     ], debug=debug)
 
 
-def run(port=8888, max_cache_size=1000000000, max_age=0):
-    print("Starting on port {port}, max cache size {max_cache_size} bytes, max age {max_age} seconds".format(
-        port=port, max_cache_size=max_cache_size, max_age=max_age))
-    make_app(debug=True, max_cache_size=max_cache_size, max_age=max_age).listen(port, max_buffer_size=max_cache_size)
+def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000):
+    print("Starting on port {port}, max cache size {max_cache_size} bytes, max age {max_age} seconds,"
+          " statistics_buffer_size {statistics_buffer_size}".format(
+        port=port, max_cache_size=max_cache_size, max_age=max_age, statistics_buffer_size=statistics_buffer_size))
+    make_app(debug=True, max_cache_size=max_cache_size, max_age=max_age,
+             statistics_buffer_size=statistics_buffer_size).listen(port, max_buffer_size=max_cache_size)
     IOLoop.current().start()
 
 if __name__ == "__main__":

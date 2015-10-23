@@ -3,13 +3,14 @@
 '''QCache
 
 Usage:
-  qcache  [-h] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE]
+  qcache  [-h] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE] [--statistics-buffer-size=BUFFER_SIZE]
 
 Options:
   -h --help                     Show this screen
   -p PORT --port=PORT           Port [default: 8888]
   -s MAX_SIZE --size=MAX_SIZE   Max cache size, bytes [default: 1000000000]
   -a MAX_AGE --age=MAX_AGE      Max age of cached item, seconds. 0 = never expire. [default: 0]
+  -b BUFFER_SIZE --statistics-buffer-size=BUFFER_SIZE    Number of entries to store in statistics ring buffer. [default: 1000]
 '''
 
 from docopt import docopt
@@ -27,7 +28,10 @@ def main():
     args = docopt(__doc__, version=__version__)
 
     # Should be possible to solve this without casting to int...
-    run(port=int(args['--port']), max_cache_size=int(args['--size']), max_age=int(args['--age']))
+    run(port=int(args['--port']),
+        max_cache_size=int(args['--size']),
+        max_age=int(args['--age']),
+        statistics_buffer_size=int(args['--statistics-buffer-size']))
 
 if __name__ == '__main__':
     main()
