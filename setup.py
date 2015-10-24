@@ -13,6 +13,7 @@ REQUIRES = [
     'tornado',
 ]
 
+
 class PyTest(TestCommand):
     def finalize_options(self):
         TestCommand.finalize_options(self)

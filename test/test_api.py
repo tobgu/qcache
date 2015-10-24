@@ -271,3 +271,27 @@ class TestDatasetDelete(SharedTest):
         assert self.query_json('/dataset/abc', {}).code == 200
         assert self.fetch('/dataset/abc', method='DELETE').code == 200
         assert self.query_json('/dataset/abc', {}).code == 404
+
+
+class TestColumnTyping(SharedTest):
+    def test_type_int_to_string(self):
+        # There is no code implemented in qcache to cover this test case. Rather
+        # it documents the conversion from string to int in a query against int
+        # column while there is no similar conversion from int to string.
+
+        data = [
+            {'some_key': '123456', 'another_key': 1111},
+            {'some_key': 'abcdef', 'another_key': 2222}]
+
+        def get(q):
+            response = self.query_json('/dataset/abc', q)
+            assert response.code == 200
+            return json.loads(response.body)
+
+        self.post_csv('/dataset/abc', data)
+
+        assert get({'where': ['==', 'another_key', 2222]}) == \
+               [{'some_key': 'abcdef', 'another_key': 2222}]
+        assert get({'where': ['==', 'another_key', '2222']}) == \
+               [{'some_key': 'abcdef', 'another_key': 2222}]
+        assert not get({'where': ['==', 'some_key', 123456]})

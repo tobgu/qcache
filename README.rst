@@ -35,7 +35,8 @@ TODO
 
 0.1.0 (first release) target
 ----------------------------
-- Type indicators for columns in custom header when uploading data
+- README
+- Get tests to pass on Travis
 
 Longer term targets
 -------------------
@@ -44,7 +45,6 @@ Longer term targets
 * Configurable URL prefix
 * Implement both GET and POST to query (using .../q/)
 * Make it possible to execute multiple queries in one request (qs=,/qs/)
-* Make it possible to do explicit evict by DELETE
 * Allow post with data and query in one request, this will guarantee progress
   as long as the dataset fits in memory. {"query": ..., dataset: ...}
 * Counters available at special URL (cache hits direct and indirect, misses, dataset size distribution, exception count)
@@ -52,7 +52,7 @@ Longer term targets
 * SSL and basic authentication
 * Possibility to specify indexes when uploading data (how do the indexes affect size? write performance? read performance?)
 * Possibility to upload files as a way to prime the cache without taking up memory.
-
+* Namespaces for more diverse statistics based on namespace?
 
 Links
 -----

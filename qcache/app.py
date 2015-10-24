@@ -1,14 +1,15 @@
-from collections import deque
 import json
-from StringIO import StringIO
+import re
+import time
 import gc
+from StringIO import StringIO
+
 import pandas
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
-import time
+
 from qcache.dataset_cache import DatasetCache
 from qcache.query import query, MalformedQueryException
-import re
 from qcache.statistics import Statistics
 
 
@@ -158,11 +159,6 @@ class StatisticsHandler(RequestHandler):
 
 
 def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000):
-    # /dataset/{key}
-    # /dataset/{namespace}/{key}
-    # /stat
-    # /stat/{namespace}
-    #
     stats = Statistics(buffer_size=statistics_buffer_size)
     return Application([
         url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)".format(url_prefix=url_prefix),
