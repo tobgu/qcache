@@ -176,18 +176,10 @@ def query(dataframe, q_json):
     try:
         filtered_df = do_filter(dataframe, q.get('where'))
         grouped_df = group_by(filtered_df, q.get('group_by'))
-        ordered_df = order_by(grouped_df, q.get('order_by'))
-        distinct_df = distinct(ordered_df, q.get('distinct'))
+        distinct_df = distinct(grouped_df, q.get('distinct'))
         projected_df = project(distinct_df, q.get('select'))
-        sliced_df = do_slice(projected_df, q.get('offset'), q.get('limit'))
+        ordered_df = order_by(projected_df, q.get('order_by'))
+        sliced_df = do_slice(ordered_df, q.get('offset'), q.get('limit'))
         return sliced_df
     except UndefinedVariableError as e:
         raise MalformedQueryException(e.message)
-
-
-class PandasDataset(object):
-    def __init__(self, dataframe):
-        self.dataframe = dataframe
-
-    def query(self, q):
-        return query(self.dataframe, q)

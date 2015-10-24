@@ -107,14 +107,15 @@ def test_select_distinct_with_columns(basic_frame):
 def test_basic_sum_aggregation(basic_frame):
     expected = pandas.read_csv(StringIO("""
 qux,baz
-qqq,12
-www,9"""))
+www,9
+qqq,12"""))
 
     frame = query(basic_frame, {
         'select': ['qux', ['sum', 'baz']],
-        'group_by': ['qux']})
+        'group_by': ['qux'],
+        'order_by': ['baz']})
 
-    assert frame.to_csv() == expected.to_csv()
+    assert frame.to_csv(index=False) == expected.to_csv(index=False)
 
 
 def test_basic_count_aggregation(basic_frame):
