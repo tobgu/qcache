@@ -9,4 +9,8 @@ python:
 install: pip install -U .
 
 # command to run tests, e.g. python setup.py test
-script: py.test
+script:
+  - tox
+
+env:
+  - TOXENV=py27
