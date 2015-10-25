@@ -318,5 +318,25 @@ Ideas for coming features & work
 * Possibility to specify indexes when uploading data (how do the indexes affect size? write performance? read performance?)
 * Possibility to upload files as a way to prime the cache without taking up memory.
 * Namespaces for more diverse statistics based on namespace?
-* Docker container with QCache pre-installed
+* Docker container with QCache
 * Publish performance numbers
+* Other formats in addition to CSV and JSON?
+
+
+************
+Contributing
+************
+Want to contribute? That's great!
+
+If you experience problems please log them on GitHub. If you want to contribute code,
+please fork the code and submit a pull request.
+
+If you intend to implement major features or make major changes please raise an issue
+so that we can discuss it first.
+
+Running tests
+=============
+.. code::
+
+   pip install -r dev-requirements.txt
+   invoke test
