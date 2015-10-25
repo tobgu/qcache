@@ -52,7 +52,7 @@ def read(fname):
 
 setup(
     name='qcache',
-    version="0.0.1",
+    version=__version__,
     description='In memory cache server with analytical query capabilities',
     long_description=read("README.rst"),
     author='Tobias Gustafsson',
