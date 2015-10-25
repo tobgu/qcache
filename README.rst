@@ -51,7 +51,7 @@ Features
 ************
 Requirements
 ************
-- Python == 2.7 for now
+Python 2.7 for now
 
 
 ************
@@ -252,6 +252,17 @@ More examples
 *************
 Right now the documentation is very immature. Please look at the tests in the project or QCache-client_
 for further guidance. If you still have questions don't hesitate to contact the author or write an issue!
+
+**********
+Statistics
+**********
+
+.. code::
+
+   http://localhost:8888/qcache/statistics
+
+A get against the above endpoint will return a JSON object containing cache statistics,
+hit & miss count, query & upload duration. Statistics are reset when querying.
 
 *************
 Data encoding
