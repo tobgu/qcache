@@ -33,7 +33,7 @@ def from_csv(text):
 
 class SharedTest(AsyncHTTPTestCase):
     def get_app(self):
-        return app.make_app(url_prefix='')
+        return app.make_app(url_prefix='', debug=True)
 
     def post_json(self, url, data):
         body = to_json(data)
@@ -197,7 +197,7 @@ class TestInvalidQueries(SharedTest):
 class TestCacheEvictionOnSize(SharedTest):
     def get_app(self):
         # A cache size of 200 is trimmed for the below test cases
-        return app.make_app(url_prefix='', max_cache_size=200)
+        return app.make_app(url_prefix='', max_cache_size=200, debug=True)
 
     def test_evicts_entry_when_too_much_space_occupied(self):
         data = [{'some_longish_key': 'some_fairly_longish_value_that_needs_to_be_stuffed_in'},
@@ -245,7 +245,7 @@ class TestCacheEvictionOnSize(SharedTest):
 class TestCacheEvictionOnAge(SharedTest):
     def get_app(self):
         # A cache size of 200 is trimmed for the below test cases
-        return app.make_app(url_prefix='', max_age=5)
+        return app.make_app(url_prefix='', max_age=5, debug=True)
 
     def test_evicts_dataset_when_data_too_old(self):
         with freeze_time('2015-10-22 00:00:00'):

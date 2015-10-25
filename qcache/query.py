@@ -136,7 +136,7 @@ def order_by(dataframe, order_q):
     ascending = [not e.startswith('-') for e in order_q]
 
     try:
-        return dataframe.sort(columns, ascending=ascending)
+        return dataframe.sort_values(by=columns, ascending=ascending)
     except KeyError:
         raise_malformed("Order by column not in table", columns)
 

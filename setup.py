@@ -6,11 +6,11 @@ from setuptools.command.test import test as TestCommand
 
 
 REQUIRES = [
-    'docopt',
-    'numpy',
-    'numexpr',
-    'pandas',
-    'tornado',
+    'docopt==0.6.2',
+    'numexpr==2.4.4',
+    'numpy==1.10.1',
+    'pandas==0.17.0',
+    'tornado==4.2.1',
 ]
 
 
