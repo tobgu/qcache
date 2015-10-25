@@ -21,14 +21,14 @@ Motivation
 You are working with table data that you want to run flexible queries against but do not want to
 load them into an SQL database or similar because of any of the following:
 
-  - The operational cost and complexity of bringing in an SQL server
-  - The tables do not have a homogeneous format
-  - The data is short lived
-  - Not all data available is ever used, you only want to use resources on demand
-  - You want to treat queries as data and build them dynamically using data structures
-    that you are used to (dictionaries and lists or objects and arrays depending on your
-    language background)
-  - ...
+- The operational cost and complexity of bringing in an SQL server
+- The tables do not have a homogeneous format
+- The data is short lived
+- Not all data available is ever used, you only want to use resources on demand
+- You want to treat queries as data and build them dynamically using data structures
+  that you are used to (dictionaries and lists or objects and arrays depending on your
+  language background)
+- ...
 
 
 .. _QCache-client: https://github.com/tobgu/qcache-client
@@ -264,8 +264,9 @@ Performance & dimensioning
 **************************
 Since QCache is single thread, single process, the way to scale capacity is by adding more servers.
 If you have 8 Gb of ram available on a 4 core machine don't start one server using all 8 Gb. Instead
-start 4 servers with 2 Gb memory each. Assign them to different ports and use a client library to
-do the load balancing between them. That way you will have 4 times the query capacity.
+start 4 servers with 2 Gb memory each or even 8 servers with 1 Gb each. Assign them to different ports
+and use a client library to do the key balancing between them. That way you will have 4 - 8 times the
+query capacity.
 
 QCache is ideal for container deployment. Start one container running one QCache instance.
 
