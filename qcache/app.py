@@ -71,6 +71,23 @@ class DatasetHandler(RequestHandler):
 
         return content_type
 
+    def dtypes(self):
+        types = self.request.headers.get('X-QCache-types', None)
+        if not types:
+            return None
+
+        dtypes = {}
+        for type_spec in types.split(';'):
+            column_name, type_name = [s.strip() for s in type_spec.split('=')]
+            if type_name == 'string':
+                dtypes[column_name] = 'object'
+            else:
+                raise HTTPError(ResponseCode.BAD_REQUEST,
+                                'Unrecognized type name "{type_name}" for column "{column_name}"'.format(
+                                    type_name=type_name, column_name=column_name))
+
+        return dtypes
+
     def get(self, dataset_key):
         t0 = time.time()
         accept_type = self.accept_type()
@@ -119,7 +136,7 @@ class DatasetHandler(RequestHandler):
         content_type = self.content_type()
         if content_type == CONTENT_TYPE_CSV:
             evict_count = self.dataset_cache.ensure_free(len(self.request.body))
-            df = pandas.read_csv(StringIO(self.request.body))
+            df = pandas.read_csv(StringIO(self.request.body), dtype=self.dtypes())
         else:
             # This is a waste of CPU cycles, first the JSON decoder decodes all strings
             # from UTF-8 then we immediately encode them back into UTF-8. Couldn't

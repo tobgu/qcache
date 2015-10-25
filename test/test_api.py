@@ -43,9 +43,13 @@ class SharedTest(AsyncHTTPTestCase):
         url = url_concat(url, {'q': json.dumps(query)})
         return self.fetch(url, headers={'Accept': 'application/json, text/csv'})
 
-    def post_csv(self, url, data):
+    def post_csv(self, url, data, types=None):
+        headers = {'Content-Type': 'text/csv'}
+        if types:
+            headers['X-QCache-types'] = '; '.join('{column_name}={type_name}'.format(column_name=c, type_name=t)
+                                                  for c, t in types.items())
         body = to_csv(data)
-        return self.fetch(url, method='POST', body=body, headers={'Content-Type': 'text/csv'})
+        return self.fetch(url, method='POST', body=body, headers=headers)
 
     def query_csv(self, url, query):
         url = url_concat(url, {'q': json.dumps(query)})
@@ -279,19 +283,57 @@ class TestColumnTyping(SharedTest):
         # it documents the conversion from string to int in a query against int
         # column while there is no similar conversion from int to string.
 
+        def get(q, response_code=200):
+            response = self.query_json('/dataset/abc', q)
+            assert response.code == response_code
+            return json.loads(response.body)
+
         data = [
             {'some_key': '123456', 'another_key': 1111},
             {'some_key': 'abcdef', 'another_key': 2222}]
 
-        def get(q):
-            response = self.query_json('/dataset/abc', q)
-            assert response.code == 200
-            return json.loads(response.body)
-
         self.post_csv('/dataset/abc', data)
 
+        # Querying on integer field
         assert get({'where': ['==', 'another_key', 2222]}) == \
                [{'some_key': 'abcdef', 'another_key': 2222}]
         assert get({'where': ['==', 'another_key', '2222']}) == \
                [{'some_key': 'abcdef', 'another_key': 2222}]
+        assert get({'where': ['==', 'another_key', 2222]}) == \
+               [{'some_key': 'abcdef', 'another_key': 2222}]
+        assert not get({'where': ['==', 'another_key', '"2222"']})
+
+        # Querying on string field
         assert not get({'where': ['==', 'some_key', 123456]})
+        assert not get({'where': ['==', 'some_key', '123456']})
+        assert get({'where': ['==', 'some_key', '"123456"']}) == \
+               [{'some_key': '123456', 'another_key': 1111}]
+
+        # Here abcdef is interpreted as another column. Since column abcdef
+        # doesn't exist a 400, Bad request will be returned.
+        assert get({'where': ['==', 'some_key', 'abcdef']}, response_code=400)
+
+    def test_type_hint_string_on_column_with_only_integers(self):
+        data = [
+            {'some_key': '123456', 'another_key': 1111},
+            {'some_key': 'abcdef', 'another_key': 2222}]
+
+        self.post_csv('/dataset/abc', data, types={'another_key': 'string'})
+
+        def get(q):
+            response = self.query_json('/dataset/abc', q)
+            return json.loads(response.body)
+
+        assert get({'where': ['==', 'another_key', '"2222"']}) == \
+               [{'some_key': 'abcdef', 'another_key': '2222'}]
+
+        # No matching item when querying by integer
+        assert not get({'where': ['==', 'another_key', 2222]})
+
+    def test_type_hinting_with_invalid_type_results_in_bad_request(self):
+        # It's currently only possible to type hint strings.
+        # Is there ever a need for other type hints?
+
+        data = [{'some_key': '123456', 'another_key': 1111}]
+        response = self.post_csv('/dataset/abc', data, types={'another_key': 'int'})
+        assert response.code == 400
