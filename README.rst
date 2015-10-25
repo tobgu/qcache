@@ -5,8 +5,8 @@ QCache
 .. image:: https://travis-ci.org/tobgu/qcache.png?branch=master
         :target: https://travis-ci.org/tobgu/qcache
 
-.. image:: https://pypip.in/d/qcache/badge.png
-        :target: https://crate.io/packages/qcache?version=latest
+.. image:: https://badge.fury.io/py/qcache.svg
+    :target: https://badge.fury.io/py/qcache
 
 .. _Memcached: http://memcached.org/
 
