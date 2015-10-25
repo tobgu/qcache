@@ -189,11 +189,12 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
     ], debug=debug)
 
 
-def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000):
+def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000, debug=False):
     print("Starting on port {port}, max cache size {max_cache_size} bytes, max age {max_age} seconds,"
-          " statistics_buffer_size {statistics_buffer_size}".format(
-        port=port, max_cache_size=max_cache_size, max_age=max_age, statistics_buffer_size=statistics_buffer_size))
-    make_app(debug=True, max_cache_size=max_cache_size, max_age=max_age,
+          " statistics_buffer_size {statistics_buffer_size}, debug={debug}".format(
+        port=port, max_cache_size=max_cache_size, max_age=max_age, statistics_buffer_size=statistics_buffer_size,
+        debug=debug))
+    make_app(debug=debug, max_cache_size=max_cache_size, max_age=max_age,
              statistics_buffer_size=statistics_buffer_size).listen(port, max_buffer_size=max_cache_size)
     IOLoop.current().start()
 

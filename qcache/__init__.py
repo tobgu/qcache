@@ -3,14 +3,16 @@
 '''QCache
 
 Usage:
-  qcache  [-h] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE] [--statistics-buffer-size=BUFFER_SIZE]
+  qcache  [-hd] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE] [--statistics-buffer-size=BUFFER_SIZE]
 
 Options:
   -h --help                     Show this screen
   -p PORT --port=PORT           Port [default: 8888]
   -s MAX_SIZE --size=MAX_SIZE   Max cache size, bytes [default: 1000000000]
   -a MAX_AGE --age=MAX_AGE      Max age of cached item, seconds. 0 = never expire. [default: 0]
-  -b BUFFER_SIZE --statistics-buffer-size=BUFFER_SIZE    Number of entries to store in statistics ring buffer. [default: 1000]
+  -b BUFFER_SIZE --statistics-buffer-size=BUFFER_SIZE  Number of entries to store in statistics
+                                                       ring buffer. [default: 1000]
+  -d --debug   Run in debug mode
 '''
 
 from docopt import docopt
@@ -31,7 +33,8 @@ def main():
     run(port=int(args['--port']),
         max_cache_size=int(args['--size']),
         max_age=int(args['--age']),
-        statistics_buffer_size=int(args['--statistics-buffer-size']))
+        statistics_buffer_size=int(args['--statistics-buffer-size']),
+        debug=args['--debug'])
 
 if __name__ == '__main__':
     main()
