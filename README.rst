@@ -321,7 +321,8 @@ Ideas for coming features & work
 * Docker container with QCache
 * Publish performance numbers
 * Other formats in addition to CSV and JSON?
-
+* Break out all things dataframe into an own package and provide possibility to update
+  and insert into dataframe based on predicate just like querying is done now.
 
 ************
 Contributing

@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 import json
-from pandas import DataFrame
+from StringIO import StringIO
+from pandas import DataFrame, pandas
 from pandas.computation.ops import UndefinedVariableError
 from pandas.core.groupby import DataFrameGroupBy
 
@@ -183,3 +184,28 @@ def query(dataframe, q_json):
         return sliced_df
     except UndefinedVariableError as e:
         raise MalformedQueryException(e.message)
+
+
+class QFrame(object):
+    __slots__ = ('df',)
+
+    def __init__(self, pandas_df):
+        self.df = pandas_df
+
+    @staticmethod
+    def from_csv(csv_string, column_types=None):
+        return QFrame(pandas.read_csv(StringIO(csv_string), dtype=column_types))
+
+    @staticmethod
+    def from_dict(d):
+        return QFrame(DataFrame.from_records(d))
+
+    def query(self, q):
+        return QFrame(query(self.df, json.dumps(q)))
+
+    def to_csv(self):
+        return self.df.to_csv(index=False)
+
+    @property
+    def columns(self):
+        return self.df.columns
