@@ -7,7 +7,7 @@ from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
 
 from qcache.dataset_cache import DatasetCache
-from qcache.query import MalformedQueryException, QFrame
+from qcache.qframe import MalformedQueryException, QFrame
 from qcache.statistics import Statistics
 
 

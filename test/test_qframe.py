@@ -1,6 +1,6 @@
 # coding=utf-8
 import pytest
-from qcache.query import MalformedQueryException, QFrame
+from qcache.qframe import MalformedQueryException, QFrame
 
 
 def query(df, q):
