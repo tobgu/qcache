@@ -188,7 +188,7 @@ ccc,"""
 
 def test_unicode_content_from_dicts():
     data = [{'foo': 'aaa', 'bar': u'Iñtërnâtiônàližætiøn'}, {'foo': 'bbb', 'bar': u'räksmörgås'.encode(encoding='utf-8')}]
-    input_frame = QFrame.from_dict(data)
+    input_frame = QFrame.from_dicts(data)
     frame = input_frame.query({'where': ["==", "bar", u"'räksmörgås'"]})
 
     assert_rows(frame, ['bbb'])

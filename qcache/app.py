@@ -2,14 +2,12 @@ import json
 import re
 import time
 import gc
-from StringIO import StringIO
 
-import pandas
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
 
 from qcache.dataset_cache import DatasetCache
-from qcache.query import query, MalformedQueryException
+from qcache.query import MalformedQueryException, QFrame
 from qcache.statistics import Statistics
 
 
@@ -100,10 +98,17 @@ class DatasetHandler(RequestHandler):
             self.stats.inc('age_evict_count')
             raise HTTPError(ResponseCode.NOT_FOUND)
 
-        q = self.get_argument('q', default='')
-        df = self.dataset_cache[dataset_key]
         try:
-            response = query(df, q)
+            q_json = self.get_argument('q', default='')
+            q = json.loads(q_json)
+        except ValueError:
+            self.write(json.dumps({'error': 'Could not load JSON: {json}'.format(json=json)}))
+            self.set_status(ResponseCode.BAD_REQUEST)
+            return
+
+        qf = self.dataset_cache[dataset_key]
+        try:
+            result_frame = qf.query(q)
         except MalformedQueryException as e:
             self.write(json.dumps({'error': e.message}))
             self.set_status(ResponseCode.BAD_REQUEST)
@@ -111,9 +116,9 @@ class DatasetHandler(RequestHandler):
 
         self.set_header("Content-Type", "{content_type}; charset=utf-8".format(content_type=accept_type))
         if accept_type == CONTENT_TYPE_CSV:
-            self.write(response.to_csv(index=False))
+            self.write(result_frame.to_csv())
         else:
-            self.write(response.to_json(orient='records'))
+            self.write(result_frame.to_json())
 
         self.post_query_processing()
         self.stats.inc('hit_count')
@@ -136,20 +141,20 @@ class DatasetHandler(RequestHandler):
         content_type = self.content_type()
         if content_type == CONTENT_TYPE_CSV:
             evict_count = self.dataset_cache.ensure_free(len(self.request.body))
-            df = pandas.read_csv(StringIO(self.request.body), dtype=self.dtypes())
+            qf = QFrame.from_csv(self.request.body, column_types=self.dtypes())
         else:
             # This is a waste of CPU cycles, first the JSON decoder decodes all strings
             # from UTF-8 then we immediately encode them back into UTF-8. Couldn't
             # find an easy solution to this though.
             evict_count = self.dataset_cache.ensure_free(len(self.request.body)/2)
             data = json.loads(self.request.body, cls=UTF8JSONDecoder)
-            df = pandas.DataFrame.from_records(data)
+            qf = QFrame.from_dicts(data)
 
-        self.dataset_cache[dataset_key] = df
+        self.dataset_cache[dataset_key] = qf
         self.set_status(ResponseCode.CREATED)
         self.stats.inc('size_evict_count', count=evict_count)
         self.stats.inc('store_count')
-        self.stats.append('store_row_counts', len(df))
+        self.stats.append('store_row_counts', len(qf))
         self.stats.append('store_durations', time.time() - t0)
         self.write("")
 

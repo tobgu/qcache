@@ -1,22 +1,22 @@
 from datetime import datetime, timedelta
 
 class CacheItem(object):
-    def __init__(self, dataset):
+    def __init__(self, qframe):
         self.creation_time = datetime.utcnow()
         self.last_access_time = self.creation_time
-        self._dataset = dataset
+        self._qframe = qframe
         self.access_count = 0
 
     @property
     def dataset(self):
         self.last_access_time = datetime.utcnow()
         self.access_count += 1
-        return self._dataset
+        return self._qframe
 
     @property
     def size(self):
         # 100 bytes is just a very rough estimate of the object overhead of this instance
-        return 100 + self._dataset.memory_usage(index=True).sum()
+        return 100 + self._qframe.byte_size()
 
 
 class DatasetCache(object):
@@ -27,7 +27,7 @@ class DatasetCache(object):
 
     @property
     def size(self):
-        return sum(df.size for df in self._cache_dict.values())
+        return sum(item.size for item in self._cache_dict.values())
 
     def has_expired(self, item):
         return self.max_age and datetime.utcnow() > item.creation_time + self.max_age
@@ -45,8 +45,8 @@ class DatasetCache(object):
     def __getitem__(self, item):
         return self._cache_dict[item].dataset
 
-    def __setitem__(self, key, df):
-        self._cache_dict[key] = CacheItem(df)
+    def __setitem__(self, key, qframe):
+        self._cache_dict[key] = CacheItem(qframe)
 
     def __delitem__(self, key):
         del self._cache_dict[key]

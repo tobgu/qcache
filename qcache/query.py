@@ -1,5 +1,4 @@
 from __future__ import unicode_literals
-import json
 from StringIO import StringIO
 from pandas import DataFrame, pandas
 from pandas.computation.ops import UndefinedVariableError
@@ -66,7 +65,7 @@ def build_filter(q):
     return "({result})".format(result=result)
 
 
-def do_filter(dataframe, filter_q):
+def _do_filter(dataframe, filter_q):
     if filter_q:
         assert_list('where', filter_q)
         filter_str = build_filter(filter_q)
@@ -75,7 +74,7 @@ def do_filter(dataframe, filter_q):
     return dataframe
 
 
-def group_by(dataframe, group_by_q):
+def _group_by(dataframe, group_by_q):
     if not group_by_q:
         return dataframe
 
@@ -87,7 +86,7 @@ def group_by(dataframe, group_by_q):
         raise_malformed('Group by column not in table', group_by_q)
 
 
-def project(dataframe, project_q):
+def _project(dataframe, project_q):
     if not project_q:
         return dataframe
 
@@ -125,7 +124,7 @@ def project(dataframe, project_q):
         raise_malformed("Selected column not in table", columns)
 
 
-def order_by(dataframe, order_q):
+def _order_by(dataframe, order_q):
     if not order_q:
         return dataframe
 
@@ -142,7 +141,7 @@ def order_by(dataframe, order_q):
         raise_malformed("Order by column not in table", columns)
 
 
-def do_slice(dataframe, offset, limit):
+def _do_slice(dataframe, offset, limit):
     if offset:
         assert_integer('offset', offset)
         dataframe = dataframe[offset:]
@@ -154,7 +153,7 @@ def do_slice(dataframe, offset, limit):
     return dataframe
 
 
-def distinct(dataframe, columns):
+def _distinct(dataframe, columns):
     if columns is None:
         return dataframe
 
@@ -165,28 +164,26 @@ def distinct(dataframe, columns):
     return dataframe.drop_duplicates(**args)
 
 
-def query(dataframe, q_json):
-    try:
-        q = json.loads(q_json)
-    except ValueError:
-        raise MalformedQueryException('Could not load JSON: {json}'.format(json=json))
-
+def _query(dataframe, q):
     if not isinstance(q, dict):
         raise MalformedQueryException('Query must be a dictionary, not "{q}"'.format(q=q))
 
     try:
-        filtered_df = do_filter(dataframe, q.get('where'))
-        grouped_df = group_by(filtered_df, q.get('group_by'))
-        distinct_df = distinct(grouped_df, q.get('distinct'))
-        projected_df = project(distinct_df, q.get('select'))
-        ordered_df = order_by(projected_df, q.get('order_by'))
-        sliced_df = do_slice(ordered_df, q.get('offset'), q.get('limit'))
+        filtered_df = _do_filter(dataframe, q.get('where'))
+        grouped_df = _group_by(filtered_df, q.get('group_by'))
+        distinct_df = _distinct(grouped_df, q.get('distinct'))
+        projected_df = _project(distinct_df, q.get('select'))
+        ordered_df = _order_by(projected_df, q.get('order_by'))
+        sliced_df = _do_slice(ordered_df, q.get('offset'), q.get('limit'))
         return sliced_df
     except UndefinedVariableError as e:
         raise MalformedQueryException(e.message)
 
 
 class QFrame(object):
+    """
+    Thin wrapper around a Pandas dataframe.
+    """
     __slots__ = ('df',)
 
     def __init__(self, pandas_df):
@@ -197,15 +194,25 @@ class QFrame(object):
         return QFrame(pandas.read_csv(StringIO(csv_string), dtype=column_types))
 
     @staticmethod
-    def from_dict(d):
+    def from_dicts(d):
         return QFrame(DataFrame.from_records(d))
 
     def query(self, q):
-        return QFrame(query(self.df, json.dumps(q)))
+        return QFrame(_query(self.df, q))
 
     def to_csv(self):
         return self.df.to_csv(index=False)
 
+    def to_json(self):
+        return self.df.to_json(orient='records')
+
     @property
     def columns(self):
         return self.df.columns
+
+    def __len__(self):
+        return len(self.df)
+
+    def byte_size(self):
+        # Estimate of the number of bytes consumed by this QFrame
+        return self.df.memory_usage(index=True).sum()

@@ -85,7 +85,7 @@ class TestBaseCases(SharedTest):
 
 
 class TestCharacterEncoding(SharedTest):
-    def test_upload_json_query_json_unicode_characters(self):
+    def xtest_upload_json_query_json_unicode_characters(self):
         response = self.post_json('/dataset/abc', [{'foo': u'Iñtërnâtiônàližætiøn'}, {'foo': 'qux'}])
         assert response.code == 201
 
