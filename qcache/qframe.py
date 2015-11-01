@@ -180,6 +180,61 @@ def _query(dataframe, q):
         raise MalformedQueryException(e.message)
 
 
+def quoted(string):
+    l = len(string)
+    return (l >= 2) and \
+           ((string[0] == "'" and string[l - 1] == "'") or \
+            (string[0] == '"' and string[l - 1] == '"'))
+
+
+def unquote(s):
+    return s[1:len(s)-1]
+
+def _prepare_arg(df, arg):
+    if isinstance(arg, basestring):
+        if quoted(arg):
+            return unquote(arg)
+
+        return getattr(df, arg)
+
+    return arg
+
+import operator
+COMPARISON_OPERATORS = {'==': operator.eq,
+                        '!=': operator.eq,
+                        '<': operator.lt,
+                        '<=': operator.le,
+                        '>': operator.gt,
+                        '>=': operator.ge}
+
+def _build_update_filter(df, update_q):
+    if type(update_q) is not list:
+        raise_malformed("Expressions must be lists", update_q)
+
+    if not update_q:
+        raise_malformed("Empty expression not allowed", update_q)
+
+    operator = update_q[0]
+    if operator in COMPARISON_OPERATORS.keys():
+        arg1 = _prepare_arg(df, update_q[1])
+        arg2 = _prepare_arg(df, update_q[2])
+        return COMPARISON_OPERATORS[operator](arg1, arg2)
+
+    raise_malformed("Unknown operator '{operator}'".format(operator=operator), update_q)
+
+
+def _build_update_values(df, q):
+    columns, values = zip(*q['update'])
+    return columns, [_prepare_arg(df, val) for val in values]
+
+
+def _update(df, q):
+    update_filter = _build_update_filter(df, q['where'])
+    columns, values = _build_update_values(df, q)
+    print "Columns: {columns}, Values: {values}".format(columns=columns, values=values)
+    df.ix[update_filter, columns] = values
+
+
 class QFrame(object):
     """
     Thin wrapper around a Pandas dataframe.
@@ -198,6 +253,11 @@ class QFrame(object):
         return QFrame(DataFrame.from_records(d))
 
     def query(self, q):
+        if 'update' in q:
+            # In place operation, should it be?
+            _update(self.df, q)
+            return None
+
         return QFrame(_query(self.df, q))
 
     def to_csv(self):
@@ -205,6 +265,9 @@ class QFrame(object):
 
     def to_json(self):
         return self.df.to_json(orient='records')
+
+    def to_dicts(self):
+        return self.df.to_records(index=False)
 
     @property
     def columns(self):
