@@ -198,14 +198,17 @@ def test_unicode_content_from_dicts():
 
 
 def test_basic_update(basic_frame):
-    basic_frame.query({'update': [['bar', 2.0]],
+    basic_frame.query({'update': [['bar', 2.0], ['baz', 0]],
                        'where': ['==', 'foo', '"bbb"']})
 
     assert basic_frame.to_dicts()[0]['bar'] == 2.0
+    assert basic_frame.to_dicts()[0]['baz'] == 0
 
 
-def test_basic_update_set_value_of_other_column(basic_frame):
-    # This is not supported. Is there a reasonable use case for this?
-    pass
+def test_basic_update_function_based_on_current_value_of_column(basic_frame):
+    basic_frame.query({'update': [['+', 'bar', 2.0]],
+                       'where': ['==', 'foo', '"bbb"']})
+
+    assert basic_frame.to_dicts()[0]['bar'] == 3.25
 
 # Self referring updates (eg. += 3)

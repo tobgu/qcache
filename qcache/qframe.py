@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 from StringIO import StringIO
+from itertools import takewhile
 from pandas import DataFrame, pandas
 from pandas.computation.ops import UndefinedVariableError
 from pandas.core.groupby import DataFrameGroupBy
@@ -222,17 +223,52 @@ def _build_update_filter(df, update_q):
 
     raise_malformed("Unknown operator '{operator}'".format(operator=operator), update_q)
 
-
-def _build_update_values(df, q):
-    columns, values = zip(*q['update'])
+def _build_update_values(df, updates):
+    columns, values = zip(*updates)
     return columns, [_prepare_arg(df, val) for val in values]
 
+def classify_updates(q):
+    # Updates can be either simple assignments or self referring updates (e. column += 1).
+    # The former can be applied all at once while pandas only supports updates of one column
+    # at the time for the latter. All updates are performed in the order they are declared
+    # in the query.
+    simple_run = []
+    for update in q['update']:
+        if len(update) == 2:
+            simple_run.append(update)
+        else:
+            if simple_run:
+                yield ('simple', simple_run)
+                simple_run = []
+            yield ('self-referring', update)
+
+    if simple_run:
+        yield ('simple', simple_run)
+
+def apply_operation(df, update_filter, column, op, value):
+    # This is repetitive and ugly but the only way I've found to do in place updates
+    if op == '+':    df.ix[update_filter, column] += value
+    elif op == '-':  df.ix[update_filter, column] -= value
+    elif op == '*':  df.ix[update_filter, column] *= value
+    elif op == '/':  df.ix[update_filter, column] /= value
+    elif op == '<<': df.ix[update_filter, column] <<= value
+    elif op == '>>': df.ix[update_filter, column] >>= value
+    elif op == '&':  df.ix[update_filter, column] &= value
+    elif op == '|':  df.ix[update_filter, column] |= value
+    elif op == '^':  df.ix[update_filter, column] ^= value
+    elif op == '%':  df.ix[update_filter, column] %= value
+    elif op == '**': df.ix[update_filter, column] **= value
+    else: raise_malformed('Invalid update operator', (op, value, column))
 
 def _update(df, q):
     update_filter = _build_update_filter(df, q['where'])
-    columns, values = _build_update_values(df, q)
-    print "Columns: {columns}, Values: {values}".format(columns=columns, values=values)
-    df.ix[update_filter, columns] = values
+    for update_type, updates in classify_updates(q):
+        if update_type == 'simple':
+            columns, values = _build_update_values(df, updates)
+            df.ix[update_filter, columns] = values
+        else:
+            op, column, value = updates
+            apply_operation(df, update_filter, column, op, value)
 
 
 class QFrame(object):
