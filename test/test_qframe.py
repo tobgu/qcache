@@ -196,6 +196,9 @@ def test_unicode_content_from_dicts():
 
 #################  Update ######################
 
+def assert_column(column, frame, expected):
+    assert [d[column] for d in frame.to_dicts()] == expected
+
 
 def test_basic_update(basic_frame):
     basic_frame.query({'update': [['bar', 2.0], ['baz', 0]],
@@ -211,4 +214,21 @@ def test_basic_update_function_based_on_current_value_of_column(basic_frame):
 
     assert basic_frame.to_dicts()[0]['bar'] == 3.25
 
-# Self referring updates (eg. += 3)
+
+def test_update_is_null(basic_frame):
+    basic_frame.query({'update': [['baz', 19]],
+                       'where': ["!=", "bar", "bar"]})
+
+    assert_column('baz', basic_frame, [5, 7, 19])
+
+# In
+# Not
+# Refactor test to check complete column
+# Mix self referring updates and assignments in same update
+
+
+def xtest_update_with_conjunction(basic_frame):
+    basic_frame.query({'update': [['bar', 2.0]],
+                       'where': ['==', 'foo', '"bbb"']})
+
+    assert basic_frame.to_dicts()[0]['bar'] == 3.25

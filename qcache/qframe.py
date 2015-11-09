@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 from StringIO import StringIO
-from itertools import takewhile
 from pandas import DataFrame, pandas
 from pandas.computation.ops import UndefinedVariableError
 from pandas.core.groupby import DataFrameGroupBy
@@ -202,7 +201,7 @@ def _prepare_arg(df, arg):
 
 import operator
 COMPARISON_OPERATORS = {'==': operator.eq,
-                        '!=': operator.eq,
+                        '!=': operator.ne,
                         '<': operator.lt,
                         '<=': operator.le,
                         '>': operator.gt,
@@ -216,6 +215,12 @@ def _build_update_filter(df, update_q):
         raise_malformed("Empty expression not allowed", update_q)
 
     operator = update_q[0]
+    if operator == "isnull":
+        if len(update_q) != 2:
+            raise_malformed('Invalid length of isnull query', update_q)
+        operator = '!='
+        update_q = [operator, update_q[1], update_q[1]]
+
     if operator in COMPARISON_OPERATORS.keys():
         arg1 = _prepare_arg(df, update_q[1])
         arg2 = _prepare_arg(df, update_q[2])
@@ -234,6 +239,9 @@ def classify_updates(q):
     # in the query.
     simple_run = []
     for update in q['update']:
+        if not isinstance(update, (list, tuple)):
+            raise_malformed("Invalid update clause", update)
+
         if len(update) == 2:
             simple_run.append(update)
         else:
