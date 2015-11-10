@@ -217,7 +217,7 @@ def test_basic_update_function_based_on_current_value_of_column(basic_frame):
 
 def test_update_is_null(basic_frame):
     basic_frame.query({'update': [['baz', 19]],
-                       'where': ["isnull", "bar"]})
+                       'where': ['isnull', 'bar']})
 
     assert_column('baz', basic_frame, [5, 7, 19])
 
@@ -225,13 +225,38 @@ def test_update_is_null(basic_frame):
 def test_update_is_null_invalid_argument_number(basic_frame):
     with pytest.raises(MalformedQueryException):
         basic_frame.query({'update': [['baz', 19]],
-                           'where': ["isnull", 9]})
+                           'where': ['isnull', 9]})
 
-# In
+
+def test_update_in(basic_frame):
+    basic_frame.query({'update': [['baz', 19]],
+                       'where': ['in', 'foo', ["'aaa'", "'bbb'"]]})
+
+    assert_column('baz', basic_frame, [19, 19, 9])
+
+
+def test_update_in_invalid_arg_count(basic_frame):
+    with pytest.raises(MalformedQueryException):
+        basic_frame.query({'update': [['baz', 19]],
+                           'where': ['in', 'foo', 'bar', ["'aaa'", "'bbb'"]]})
+
+
+def test_update_in_unknown_column(basic_frame):
+    with pytest.raises(MalformedQueryException):
+        basic_frame.query({'update': [['baz', 19]],
+                           'where': ['in', 'unknown', ["'aaa'", "'bbb'"]]})
+
+
+def test_update_in_second_arg_not_a_list(basic_frame):
+    with pytest.raises(MalformedQueryException):
+        basic_frame.query({'update': [['baz', 19]],
+                           'where': ['in', 'foo', 'boo']})
+
 # Not
+# Disjunction and conjunction
 # Refactor tests to check complete column not just the row that is supposed to be affected
 # Mix self referring updates and assignments in same update
-
+# Any way to merge the filter code for select and update (is the update version as performant as the where)?
 
 def xtest_update_with_conjunction(basic_frame):
     basic_frame.query({'update': [['bar', 2.0]],

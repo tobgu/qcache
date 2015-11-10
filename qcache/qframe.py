@@ -223,6 +223,19 @@ def _build_update_filter(df, update_q):
         except AttributeError:
             raise_malformed("Unknown column for 'isnull'", update_q)
 
+    if operator == "in":
+        if len(update_q) != 3:
+            raise_malformed("Invalid length of 'in' query", update_q)
+
+        _, column, values = update_q
+        if column not in df:
+            raise_malformed("First argument to 'in' must be a column present in frame", update_q)
+
+        if not isinstance(values, (list, tuple)):
+            raise_malformed("Second argument to 'in' must be a list", update_q)
+
+        return getattr(df, column).isin([_prepare_arg(df, val) for val in values])
+
     if operator in COMPARISON_OPERATORS.keys():
         arg1 = _prepare_arg(df, update_q[1])
         arg2 = _prepare_arg(df, update_q[2])
