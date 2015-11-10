@@ -218,8 +218,10 @@ def _build_update_filter(df, update_q):
     if operator == "isnull":
         if len(update_q) != 2:
             raise_malformed('Invalid length of isnull query', update_q)
-        operator = '!='
-        update_q = [operator, update_q[1], update_q[1]]
+        try:
+            return getattr(_prepare_arg(df, update_q[1]), 'isnull')()
+        except AttributeError:
+            raise_malformed("Unknown column for 'isnull'", update_q)
 
     if operator in COMPARISON_OPERATORS.keys():
         arg1 = _prepare_arg(df, update_q[1])

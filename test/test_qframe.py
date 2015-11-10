@@ -217,13 +217,19 @@ def test_basic_update_function_based_on_current_value_of_column(basic_frame):
 
 def test_update_is_null(basic_frame):
     basic_frame.query({'update': [['baz', 19]],
-                       'where': ["!=", "bar", "bar"]})
+                       'where': ["isnull", "bar"]})
 
     assert_column('baz', basic_frame, [5, 7, 19])
 
+
+def test_update_is_null_invalid_argument_number(basic_frame):
+    with pytest.raises(MalformedQueryException):
+        basic_frame.query({'update': [['baz', 19]],
+                           'where': ["isnull", 9]})
+
 # In
 # Not
-# Refactor test to check complete column
+# Refactor tests to check complete column not just the row that is supposed to be affected
 # Mix self referring updates and assignments in same update
 
 
