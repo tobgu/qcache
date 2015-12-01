@@ -1,3 +1,4 @@
+import base64
 import json
 import re
 import time
@@ -25,6 +26,59 @@ CONTENT_TYPE_CSV = 'text/csv'
 ACCEPTED_TYPES = {CONTENT_TYPE_JSON, CONTENT_TYPE_CSV}  # text/*, */*?
 CHARSET_REGEX = re.compile('charset=([A-Za-z0-9_-]+)')
 
+auth_user = None
+auth_password = None
+
+
+def auth_enabled():
+    return auth_user is not None and auth_password is not None
+
+
+def credentials_correct(provided_user, provided_password):
+    return provided_user == auth_user and provided_password == auth_password
+
+
+def http_auth(handler_class):
+    """
+    Basic auth decorator. Based on the decorator found here:
+    https://simplapi.wordpress.com/2014/03/26/python-tornado-and-decorator/
+    """
+    def set_401(handler):
+        handler.set_status(401)
+        handler.set_header('WWW-Authenticate', 'Basic realm=Restricted')
+        handler._transforms = []
+        handler.finish()
+
+    def wrap_execute(handler_execute):
+        def is_authenticated(handler):
+            if not auth_enabled():
+                return True
+
+            auth_header = handler.request.headers.get('Authorization')
+            if auth_header is None or not auth_header.startswith('Basic '):
+                set_401(handler)
+                return False
+
+            auth_decoded = base64.decodestring(auth_header[6:])
+            user, password = auth_decoded.split(':', 2)
+
+            if not credentials_correct(user, password):
+                set_401(handler)
+                return False
+
+            return True
+
+        def _execute(self, transforms, *args, **kwargs):
+            if not is_authenticated(self):
+                return False
+
+            return handler_execute(self, transforms, *args, **kwargs)
+
+        return _execute
+
+    handler_class._execute = wrap_execute(handler_class._execute)
+    return handler_class
+
 
 class UTF8JSONDecoder(json.JSONDecoder):
     def decode(self, json_string):
@@ -40,6 +94,7 @@ class AppState(object):
         self.query_count = 0
 
 
+@http_auth
 class DatasetHandler(RequestHandler):
     def initialize(self, dataset_cache, state, stats):
         self.dataset_cache = dataset_cache
@@ -165,11 +220,13 @@ class DatasetHandler(RequestHandler):
         self.write("")
 
 
+@http_auth
 class StatusHandler(RequestHandler):
     def get(self):
         self.write("OK")
 
 
+@http_auth
 class StatisticsHandler(RequestHandler):
     def initialize(self, stats):
         self.stats = stats
@@ -180,7 +237,11 @@ class StatisticsHandler(RequestHandler):
         self.stats.reset()
 
 
-def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000):
+def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000, basic_auth=None):
+    if basic_auth:
+        global auth_user, auth_password
+        auth_user, auth_password = basic_auth.split(':', 2)
+
     stats = Statistics(buffer_size=statistics_buffer_size)
     return Application([
         url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)".format(url_prefix=url_prefix),
@@ -194,13 +255,17 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
     ], debug=debug)
 
 
-def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000, debug=False, certfile=None):
+def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000, debug=False, certfile=None, basic_auth=None):
+    if basic_auth and not certfile:
+        print "SSL must be enbabled to use basic auth!"
+        return
+
     print("Starting on port {port}, max cache size {max_cache_size} bytes, max age {max_age} seconds,"
           " statistics_buffer_size {statistics_buffer_size}, debug={debug}".format(
         port=port, max_cache_size=max_cache_size, max_age=max_age, statistics_buffer_size=statistics_buffer_size, debug=debug))
 
     app = make_app(
-        debug=debug, max_cache_size=max_cache_size, max_age=max_age, statistics_buffer_size=statistics_buffer_size)
+        debug=debug, max_cache_size=max_cache_size, max_age=max_age, statistics_buffer_size=statistics_buffer_size, basic_auth=basic_auth)
 
     args = {}
     if certfile:

@@ -3,7 +3,7 @@
 '''QCache
 
 Usage:
-  qcache  [-hd] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE] [--statistics-buffer-size=BUFFER_SIZE] [--cert-file=PATH_TO_CERT]
+  qcache  [-hd] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE] [--statistics-buffer-size=BUFFER_SIZE] [--cert-file=PATH_TO_CERT] [--basic-auth=<USER>:<PASSWORD>]
 
 Options:
   -h --help                     Show this screen
@@ -14,6 +14,7 @@ Options:
                                                        ring buffer. [default: 1000]
   -c PATH_TO_CERT --cert-file=PATH_TO_CERT   Path to PEM file containing private key and certificate for SSL
   -d --debug   Run in debug mode
+  -ba <USER>:<PASSWORD> --basic-auth=<USER>:<PASSWORD>   Enable basic auth, requires that SSL is enabled.
 '''
 
 from docopt import docopt
@@ -36,7 +37,8 @@ def main():
         max_age=int(args['--age']),
         statistics_buffer_size=int(args['--statistics-buffer-size']),
         debug=args['--debug'],
-        certfile=args['--cert-file'])
+        certfile=args['--cert-file'],
+        basic_auth=args['--basic-auth'])
 
 if __name__ == '__main__':
     main()

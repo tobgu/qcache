@@ -354,7 +354,7 @@ class SSLTestBase(AsyncHTTPTestCase):
         return dict(ssl_options=dict(certfile=os.path.join(test_dir, 'dummy-cert.pem')))
 
 
-class SSLServerTestWithSSL(SSLTestBase):
+class TestSSLServerWithSSL(SSLTestBase):
     def get_protocol(self):
         return 'https'
 
@@ -363,10 +363,50 @@ class SSLServerTestWithSSL(SSLTestBase):
         assert response.code == 200
 
 
-class SSLServerTestWithoutSSL(SSLTestBase):
+class TestSSLServerWithoutSSL(SSLTestBase):
     def get_protocol(self):
         return 'http'
 
     def test_fetch_status(self):
         response = self.fetch('/status', validate_cert=False)
         assert response.code == 599
+
+
+class TestSSLServerWithSSLAndBasicAuth(SSLTestBase):
+    def get_app(self):
+        return app.make_app(url_prefix='', debug=True, basic_auth='foo:bar')
+
+    def get_protocol(self):
+        return 'https'
+
+    def test_fetch_status_correct_credentials(self):
+        response = self.fetch('/status', validate_cert=False, auth_username='foo', auth_password='bar')
+        assert response.code == 200
+
+    def test_fetch_status_incorrect_password(self):
+        response = self.fetch('/status', validate_cert=False, auth_username='foo', auth_password='ba')
+        assert response.code == 401
+
+    def test_fetch_status_unknown_user(self):
+        response = self.fetch('/status', validate_cert=False, auth_username='fo', auth_password='bar')
+        assert response.code == 401
+
+    def test_fetch_status_missing_credentials(self):
+        response = self.fetch('/status', validate_cert=False)
+        assert response.code == 401
+
+    def test_fetch_data_missing_credentials(self):
+        response = self.fetch('/dataset/XYZ', validate_cert=False)
+        assert response.code == 401
+
+    def test_fetch_data_correct_credentials(self):
+        response = self.fetch('/dataset/XYZ', validate_cert=False, auth_username='foo', auth_password='bar')
+        assert response.code == 404
+
+    def test_fetch_statistics_missing_credentials(self):
+        response = self.fetch('/statistics', validate_cert=False)
+        assert response.code == 401
+
+    def test_fetch_statistics_correct_credentials(self):
+        response = self.fetch('/statistics', validate_cert=False, auth_username='foo', auth_password='bar')
+        assert response.code == 200
