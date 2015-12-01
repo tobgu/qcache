@@ -1,7 +1,8 @@
 # coding=utf-8
 import json
+import os
 from tornado.httputil import url_concat
-from tornado.testing import AsyncHTTPTestCase
+from tornado.testing import AsyncHTTPTestCase, AsyncHTTPSTestCase
 from freezegun import freeze_time
 import qcache.app as app
 import csv
@@ -337,3 +338,35 @@ class TestColumnTyping(SharedTest):
         data = [{'some_key': '123456', 'another_key': 1111}]
         response = self.post_csv('/dataset/abc', data, types={'another_key': 'int'})
         assert response.code == 400
+
+
+class SSLTestBase(AsyncHTTPTestCase):
+    def get_app(self):
+        return app.make_app(url_prefix='', debug=True)
+
+    def get_ssl_version(self):
+        raise NotImplementedError()
+
+    def get_httpserver_options(self):
+        # Dummy cert generated using (expires 2025):
+        # openssl req -new -x509 -days 3650 -nodes -out cert.pem -keyout cert.pem
+        test_dir = os.path.dirname(__file__)
+        return dict(ssl_options=dict(certfile=os.path.join(test_dir, 'dummy-cert.pem')))
+
+
+class SSLServerTestWithSSL(SSLTestBase):
+    def get_protocol(self):
+        return 'https'
+
+    def test_fetch_status(self):
+        response = self.fetch('/status', validate_cert=False)
+        assert response.code == 200
+
+
+class SSLServerTestWithoutSSL(SSLTestBase):
+    def get_protocol(self):
+        return 'http'
+
+    def test_fetch_status(self):
+        response = self.fetch('/status', validate_cert=False)
+        assert response.code == 599

@@ -194,13 +194,19 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
     ], debug=debug)
 
 
-def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000, debug=False):
+def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000, debug=False, certfile=None):
     print("Starting on port {port}, max cache size {max_cache_size} bytes, max age {max_age} seconds,"
           " statistics_buffer_size {statistics_buffer_size}, debug={debug}".format(
-        port=port, max_cache_size=max_cache_size, max_age=max_age, statistics_buffer_size=statistics_buffer_size,
-        debug=debug))
-    make_app(debug=debug, max_cache_size=max_cache_size, max_age=max_age,
-             statistics_buffer_size=statistics_buffer_size).listen(port, max_buffer_size=max_cache_size)
+        port=port, max_cache_size=max_cache_size, max_age=max_age, statistics_buffer_size=statistics_buffer_size, debug=debug))
+
+    app = make_app(
+        debug=debug, max_cache_size=max_cache_size, max_age=max_age, statistics_buffer_size=statistics_buffer_size)
+
+    args = {}
+    if certfile:
+        args['ssl_options'] = {'certfile': certfile, 'ciphers': 'ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+3DES:!aNULL:!MD5:!DSS'}
+
+    app.listen(port, max_buffer_size=max_cache_size, **args)
     IOLoop.current().start()
 
 if __name__ == "__main__":

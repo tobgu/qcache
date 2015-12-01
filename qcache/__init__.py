@@ -3,7 +3,7 @@
 '''QCache
 
 Usage:
-  qcache  [-hd] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE] [--statistics-buffer-size=BUFFER_SIZE]
+  qcache  [-hd] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE] [--statistics-buffer-size=BUFFER_SIZE] [--cert-file=PATH_TO_CERT]
 
 Options:
   -h --help                     Show this screen
@@ -12,6 +12,7 @@ Options:
   -a MAX_AGE --age=MAX_AGE      Max age of cached item, seconds. 0 = never expire. [default: 0]
   -b BUFFER_SIZE --statistics-buffer-size=BUFFER_SIZE  Number of entries to store in statistics
                                                        ring buffer. [default: 1000]
+  -c PATH_TO_CERT --cert-file=PATH_TO_CERT   Path to PEM file containing private key and certificate for SSL
   -d --debug   Run in debug mode
 '''
 
@@ -34,7 +35,8 @@ def main():
         max_cache_size=int(args['--size']),
         max_age=int(args['--age']),
         statistics_buffer_size=int(args['--statistics-buffer-size']),
-        debug=args['--debug'])
+        debug=args['--debug'],
+        certfile=args['--cert-file'])
 
 if __name__ == '__main__':
     main()
