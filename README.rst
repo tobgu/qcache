@@ -28,6 +28,7 @@ load them into an SQL database or similar because of any of the following:
 - You want to treat queries as data and build them dynamically using data structures
   that you are used to (dictionaries and lists or objects and arrays depending on your
   language background)
+- Expensive JOINs are required to create the table.
 - ...
 
 
@@ -75,10 +76,20 @@ This will start qcache on the default port using the default cache size. To get 
    qcache --help
 
 
+******
+Docker
+******
+You can also get the latest version as a Docker image. This is probably the easiest way to try it out if you
+are running Linux or if you have Docker Machine installed.
+
+.. code::
+
+   docker run -p 9401:9401 tobgu/qcache
+
+
 *******
 License
 *******
-
 MIT licensed. See the bundled `LICENSE <https://github.com/tobgu/qcache/blob/master/LICENSE>`_ file for more details.
 
 **************
@@ -118,7 +129,7 @@ Comparison
 ----------
 .. code:: python
 
-   {"where": ["<" "foo" 1]}
+   {"where": ["<", "foo", 1]}
 
 The following operators are supported:
 
@@ -130,15 +141,15 @@ In
 --
 .. code:: python
 
-   {"where": ["in" "foo" [1, 2]]}
+   {"where": ["in", "foo", [1, 2]]}
 
 
 Clauses
 -------
 .. code:: python
 
-   {"where": ["&" [">" "foo" 1],
-                  ["==" "bar" 2]]}
+   {"where": ["&", [">", "foo", 1],
+                  ["==", "bar", 2]]}
 
 The following operators are supported:
 
@@ -150,7 +161,7 @@ Negation
 --------
 .. code:: python
 
-   {"where": ["!" ["=" "foo"  1]]}
+   {"where": ["!", ["=", "foo",  1]]}
 
 
 Ordering
@@ -167,12 +178,12 @@ Descending
 
 .. code:: python
 
-   {"order_by": ["-foo"]}   Desc
+   {"order_by": ["-foo"]}
 
 
 Offset
 ======
-Great for paging long results!
+Great for pagination of long results!
 
 .. code:: python
 
@@ -201,7 +212,7 @@ Aggregation is done as part of the select, just like in SQL.
 
 .. code:: python
 
-   {"select": ["foo" ["sum" "bar"]],
+   {"select": ["foo" ["sum", "bar"]],
     "group_by": ["foo"]}
 
 
@@ -211,7 +222,7 @@ Distinct has its own query clause unlike in SQL.
 
 .. code:: python
 
-   {"select": ["foo" "bar"],
+   {"select": ["foo", "bar"],
     "distinct": ["foo"]}
 
 
@@ -221,8 +232,8 @@ A slightly more elaborate example. Get the top 10 foo:s with most bar:s.
 
 .. code:: python
 
-   {"select": ["foo" ["sum" "bar"]],
-    "where": [">" "bar" 0],
+   {"select": ["foo", ["sum", "bar"]],
+    "where": [">", "bar", 0],
     "order_by": ["-bar"],
     "group_by": ["foo"],
     "limit": 10}
@@ -304,25 +315,27 @@ QCache makes heavy use of the fantastic python libraries Pandas_, NumPy_, Numexp
 ********************************
 Ideas for coming features & work
 ********************************
+These may or may not be realized, it's far from sure that all of the ideas are good.
+
 * Improve documentation
-* Stream data into dataframe rather than waiting for complete input
-* Streaming proxy
-* Configurable URL prefix
-* Implement both GET and POST to query (using .../q/)
-* Make it possible to execute multiple queries in one request (qs=,/qs/)
+* Stream data into dataframe rather than waiting for complete input, chunked HTTP upload or similar.
+* Streaming proxy to allow clients to only know about one endpoint.
+* Configurable URL prefix to allow being mounted at arbitrary position behind a proxy.
+* POST to query (using .../q/). This would potentially allow larger queries.
+* Return information about the full query result size before any slicing was done to facilitate paging.
+* Make it possible to execute multiple queries and return multiple responses in one request (qs=,/qs/).
 * Allow post with data and query in one request, this will guarantee progress
-  as long as the dataset fits in memory. {"query": ..., dataset: ...}
-* Counters available at special URL (cache hits direct and indirect, misses, dataset size distribution, exception count)
+  as long as the dataset fits in memory. {"query": ..., "dataset": ...}
 * Exceptions to Sentry?
-* SSL and basic authentication
 * Possibility to specify indexes when uploading data (how do the indexes affect size? write performance? read performance?)
 * Possibility to upload files as a way to prime the cache without taking up memory.
 * Namespaces for more diverse statistics based on namespace?
-* Docker container with QCache
 * Publish performance numbers
-* Other formats in addition to CSV and JSON?
+* Other table formats in addition to CSV and JSON?
 * Break out all things dataframe into an own package and provide possibility to update
   and insert into dataframe based on predicate just like querying is done now.
+* Reduce docker images size. Perhaps by using the microconda image and use binary builds
+  of pandas and numexpr to avoid all the dependencies that needs to be installed for compilation.
 
 ************
 Contributing
