@@ -1,12 +1,10 @@
 FROM debian:latest
 
-RUN apt-get update
-RUN apt-get -y install python-dev python-pip
-RUN pip install numpy==1.10.1 && pip install pandas==0.17.0
-RUN pip install qcache
+COPY prepare_docker_image.sh .
+RUN ./prepare_docker_image.sh
+RUN pip install qcache==0.1.0
 
 EXPOSE 9401 9402 9403 9404 9405 9406 9407 9408
-
 ENV QCACHE_PORT 9401
 
 # The start container like this:

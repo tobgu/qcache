@@ -95,7 +95,7 @@ def main():
         ds = random.choice(datasets)
         key = ''.join(random.choice(string.ascii_uppercase) for _ in range(6))
         t0 = time.time()
-        response = requests.post("http://localhost:8888/qcache/dataset/{key}".format(key=key),
+        response = requests.post("http://localhost:9401/qcache/dataset/{key}".format(key=key),
                                  headers={'Content-type': 'text/csv'}, data=ds)
         print "Posted {key}={size}, response={response}, duration={duration}".format(
             key=key, size=len(ds), response=response.status_code, duration=time.time()-t0)
@@ -114,7 +114,7 @@ def main():
             ds_key = random.choice(latest_datasets)
 
             t0 = time.time()
-            response = requests.get("http://localhost:8888/qcache/dataset/{key}".format(key=ds_key),
+            response = requests.get("http://localhost:9401/qcache/dataset/{key}".format(key=ds_key),
                                     params=params, headers={'Accept': 'application/json'})
 
             if response.status_code == 200:
