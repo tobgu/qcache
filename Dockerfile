@@ -2,7 +2,7 @@ FROM debian:latest
 
 COPY prepare_docker_image.sh .
 RUN ./prepare_docker_image.sh
-RUN pip install qcache==0.1.0
+RUN pip install qcache==0.2.0
 
 EXPOSE 9401 9402 9403 9404 9405 9406 9407 9408
 ENV QCACHE_PORT 9401
