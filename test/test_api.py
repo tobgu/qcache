@@ -85,8 +85,25 @@ class TestBaseCases(SharedTest):
         assert from_csv(response.body) == [{'baz': '1', 'bar': '10'}]  # NB: Strings for numbers here
 
 
+class TestSlicing(SharedTest):
+    def test_unsliced_size_header_indicates_the_dataset_size_before_slicing_it(self):
+        # This helps out in pagination of data
+        self.post_csv('/dataset/cba', [{'baz': 1, 'bar': 10}, {'baz': 2, 'bar': 20}])
+
+        # Fetch all data, the header value should be the same as the length of the response
+        response = self.query_json('/dataset/cba', {})
+        assert response.code == 200
+        assert len(json.loads(response.body)) == 2
+        assert response.headers['X-QCache-unsliced-length'] == '2'
+
+        response = self.query_json('/dataset/cba', {"offset": 1})
+        assert response.code == 200
+        assert len(json.loads(response.body)) == 1
+        assert response.headers['X-QCache-unsliced-length'] == '2'
+
+
 class TestCharacterEncoding(SharedTest):
-    def xtest_upload_json_query_json_unicode_characters(self):
+    def test_upload_json_query_json_unicode_characters(self):
         response = self.post_json('/dataset/abc', [{'foo': u'Iñtërnâtiônàližætiøn'}, {'foo': 'qux'}])
         assert response.code == 201
 

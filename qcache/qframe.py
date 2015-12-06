@@ -175,7 +175,7 @@ def _query(dataframe, q):
         projected_df = _project(distinct_df, q.get('select'))
         ordered_df = _order_by(projected_df, q.get('order_by'))
         sliced_df = _do_slice(ordered_df, q.get('offset'), q.get('limit'))
-        return sliced_df
+        return sliced_df, len(ordered_df)
     except UndefinedVariableError as e:
         raise MalformedQueryException(e.message)
 
@@ -189,6 +189,7 @@ def quoted(string):
 
 def unquote(s):
     return s[1:len(s)-1]
+
 
 def _prepare_arg(df, arg):
     if isinstance(arg, basestring):
@@ -206,6 +207,7 @@ COMPARISON_OPERATORS = {'==': operator.eq,
                         '<=': operator.le,
                         '>': operator.gt,
                         '>=': operator.ge}
+
 
 def _build_update_filter(df, update_q):
     if type(update_q) is not list:
@@ -243,9 +245,11 @@ def _build_update_filter(df, update_q):
 
     raise_malformed("Unknown operator '{operator}'".format(operator=operator), update_q)
 
+
 def _build_update_values(df, updates):
     columns, values = zip(*updates)
     return columns, [_prepare_arg(df, val) for val in values]
+
 
 def classify_updates(q):
     # Updates can be either simple assignments or self referring updates (e. column += 1).
@@ -268,6 +272,7 @@ def classify_updates(q):
     if simple_run:
         yield ('simple', simple_run)
 
+
 def apply_operation(df, update_filter, column, op, value):
     # This is repetitive and ugly but the only way I've found to do in place updates
     if op == '+':    df.ix[update_filter, column] += value
@@ -282,6 +287,7 @@ def apply_operation(df, update_filter, column, op, value):
     elif op == '%':  df.ix[update_filter, column] %= value
     elif op == '**': df.ix[update_filter, column] **= value
     else: raise_malformed('Invalid update operator', (op, value, column))
+
 
 def _update(df, q):
     update_filter = _build_update_filter(df, q['where'])
@@ -298,9 +304,10 @@ class QFrame(object):
     """
     Thin wrapper around a Pandas dataframe.
     """
-    __slots__ = ('df',)
+    __slots__ = ('df', 'unsliced_df_len')
 
-    def __init__(self, pandas_df):
+    def __init__(self, pandas_df, unsliced_df_len=None):
+        self.unsliced_df_len = len(pandas_df) if unsliced_df_len is None else unsliced_df_len
         self.df = pandas_df
 
     @staticmethod
@@ -317,7 +324,8 @@ class QFrame(object):
             _update(self.df, q)
             return None
 
-        return QFrame(_query(self.df, q))
+        new_df, unsliced_df_len = _query(self.df, q)
+        return QFrame(new_df, unsliced_df_len=unsliced_df_len)
 
     def to_csv(self):
         return self.df.to_csv(index=False)

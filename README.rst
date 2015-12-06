@@ -312,9 +312,9 @@ Standing on the shoulders of giants
 QCache makes heavy use of the fantastic python libraries Pandas_, NumPy_, Numexpr_ and Tornado_.
 
 
-********************************
-Ideas for coming features & work
-********************************
+*********************
+Ideas for coming work
+*********************
 These may or may not be realized, it's far from sure that all of the ideas are good.
 
 * Improve documentation
@@ -334,8 +334,10 @@ These may or may not be realized, it's far from sure that all of the ideas are g
 * Other table formats in addition to CSV and JSON?
 * Break out all things dataframe into an own package and provide possibility to update
   and insert into dataframe based on predicate just like querying is done now.
-* Reduce docker images size. Perhaps by using the microconda image and use binary builds
+* Reduce docker images size. Perhaps by using the tiny conda image and use binary builds
   of pandas and numexpr to avoid all the dependencies that needs to be installed for compilation.
+* Investigate type hints for pandas categorials on enum-like values to improve storage
+  layout and filter speed.
 
 ************
 Contributing

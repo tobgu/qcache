@@ -170,6 +170,7 @@ class DatasetHandler(RequestHandler):
             return
 
         self.set_header("Content-Type", "{content_type}; charset=utf-8".format(content_type=accept_type))
+        self.set_header("X-QCache-unsliced-length", result_frame.unsliced_df_len)
         if accept_type == CONTENT_TYPE_CSV:
             self.write(result_frame.to_csv())
         else:

@@ -169,7 +169,7 @@ def test_sort_on_unknown_column(basic_frame):
 def test_offset_and_limit(basic_frame):
     frame = basic_frame.query({"offset": 1, "limit": 1})
     assert_rows(frame, ['aaa'])
-
+    assert frame.unsliced_df_len == 3
 
 
 ############## Unicode #################
