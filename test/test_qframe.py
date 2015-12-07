@@ -99,6 +99,7 @@ def test_select_distinct_with_columns(basic_frame):
     frame = basic_frame.query({'distinct': ['qux']})
     assert_rows(frame, ['bbb', 'ccc'])
 
+
 ################ Aggregation #####################
 
 #TODO: More tests and error handling
@@ -251,6 +252,16 @@ def test_update_in_second_arg_not_a_list(basic_frame):
     with pytest.raises(MalformedQueryException):
         basic_frame.query({'update': [['baz', 19]],
                            'where': ['in', 'foo', 'boo']})
+
+
+def test_unknown_clause_in_query(basic_frame):
+    try:
+        basic_frame.query({'foo': []})
+        assert False
+    except MalformedQueryException as e:
+        print e.message
+        assert 'foo' in e.message
+
 
 # Not
 # Disjunction and conjunction

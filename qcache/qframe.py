@@ -5,6 +5,17 @@ from pandas.computation.ops import UndefinedVariableError
 from pandas.core.groupby import DataFrameGroupBy
 
 
+CLAUSE_WHERE = 'where'
+CLAUSE_GROUP_BY = 'group_by'
+CLAUSE_DISTINCT = 'distinct'
+CLAUSE_SELECT = 'select'
+CLAUSE_ORDER_BY = 'order_by'
+CLAUSE_OFFSET = 'offset'
+CLAUSE_LIMIT = 'limit'
+QUERY_CLAUSES = {CLAUSE_WHERE, CLAUSE_GROUP_BY, CLAUSE_DISTINCT, CLAUSE_SELECT,
+                 CLAUSE_ORDER_BY, CLAUSE_OFFSET, CLAUSE_LIMIT}
+
+
 class MalformedQueryException(Exception):
     pass
 
@@ -78,7 +89,7 @@ def _group_by(dataframe, group_by_q):
     if not group_by_q:
         return dataframe
 
-    assert_list('where', group_by_q)
+    assert_list('group_by', group_by_q)
 
     try:
         return dataframe.groupby(group_by_q, as_index=False)
@@ -128,7 +139,7 @@ def _order_by(dataframe, order_q):
     if not order_q:
         return dataframe
 
-    assert_list('order by', order_q)
+    assert_list('order_by', order_q)
     if not all(isinstance(c, basestring) for c in order_q):
         raise_malformed("Invalid order by format", order_q)
 
@@ -167,6 +178,11 @@ def _distinct(dataframe, columns):
 def _query(dataframe, q):
     if not isinstance(q, dict):
         raise MalformedQueryException('Query must be a dictionary, not "{q}"'.format(q=q))
+
+    key_set = set(q.keys())
+    if not key_set.issubset(QUERY_CLAUSES):
+        raise MalformedQueryException('Unknown query clauses: {keys}'.format(
+            keys=', '.join(key_set.difference(QUERY_CLAUSES))))
 
     try:
         filtered_df = _do_filter(dataframe, q.get('where'))
