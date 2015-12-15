@@ -106,7 +106,7 @@ def main():
 
         for _ in range(random.randint(0, 5)):
             query = dict(select=['text1', 'text2', 'a_status', 'some_number'],
-                         distince=['text1', 'text2', 'a_status', 'some_number'],
+                         distinct=['text1', 'text2', 'a_status', 'some_number'],
                          where=['==', 'classifier', "'{}'".format(random.choice(SELECTION))],
                          limit=50)
             params = {'q': json.dumps(query)}

@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+
 class CacheItem(object):
     def __init__(self, qframe):
         self.creation_time = datetime.utcnow()
@@ -24,10 +25,7 @@ class DatasetCache(object):
         self.max_size = max_size
         self.max_age = timedelta(seconds=max_age)
         self._cache_dict = {}
-
-    @property
-    def size(self):
-        return sum(item.size for item in self._cache_dict.values())
+        self.size = 0.0
 
     def has_expired(self, item):
         return self.max_age and datetime.utcnow() > item.creation_time + self.max_age
@@ -46,9 +44,16 @@ class DatasetCache(object):
         return self._cache_dict[item].dataset
 
     def __setitem__(self, key, qframe):
-        self._cache_dict[key] = CacheItem(qframe)
+        current_size = 0.0
+        if key in self._cache_dict:
+            current_size = self._cache_dict[key].size
+
+        new_item = CacheItem(qframe)
+        self.size += new_item.size - current_size
+        self._cache_dict[key] = new_item
 
     def __delitem__(self, key):
+        self.size -= self._cache_dict[key].size
         del self._cache_dict[key]
 
     def ensure_free(self, byte_count):
@@ -58,19 +63,16 @@ class DatasetCache(object):
         if byte_count > self.max_size:
             raise Exception('Impossible to allocate')
 
-        current_size = self.size
-        free_size = self.max_size - current_size
-        if free_size >= byte_count:
+        if self.max_size - self.size >= byte_count:
             return 0
-
-        requirement = byte_count - free_size
 
         # This is not very efficient but good enough for now
         lru_datasets = sorted(self._cache_dict.items(), key=lambda item: item[1].last_access_time)
         count = 0
-        for key, dataset in lru_datasets:
-            requirement -= dataset.size
-            del self._cache_dict[key]
+        for key, _ in lru_datasets:
+            del self[key]
             count += 1
-            if requirement <= 0:
-                return count
+            if self.max_size - self.size >= byte_count:
+                break
+
+        return count
