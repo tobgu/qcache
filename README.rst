@@ -31,6 +31,10 @@ load them into an SQL database or similar because of any of the following:
 - Expensive JOINs are required to create the table.
 - ...
 
+Or, you are building server software and want to add the possibility for your clients to run
+queries directly against the data without the need for dreadful translations between a REST
+interface with some home grown filter language.
+
 
 .. _QCache-client: https://github.com/tobgu/qcache-client
 
@@ -38,7 +42,8 @@ load them into an SQL database or similar because of any of the following:
 Features
 ********
 - Simple, single process, server.
-- Expressive JSON-based query language with format and features similar to SQL SELECT.
+- Expressive JSON-based query language with format and features similar to SQL SELECT. Queries
+  are data that can easily be transformed or enriched.
 - Support for JSON or CSV input and output format
 - Performant query performance on tables as large as 10 x 1000000 cells out of the box
 - No need for table definitions, tables are created dynamically based on the data inserted
