@@ -1,15 +1,23 @@
 # -*- coding: utf-8 -*-
 import os
-import sys
 
 from invoke import task, run
 
 docs_dir = 'docs'
 build_dir = os.path.join(docs_dir, '_build')
 
+
 @task
 def test():
-    run('python setup.py test', pty=True)
+    run('python -m py.test -s', pty=True)
+
+
+@task
+def coverage():
+    run('python -m py.test --cov=qcache', pty=True)
+    run('coverage -m', pty=True)
+    run('coverage html', pty=True)
+
 
 @task
 def clean():

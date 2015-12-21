@@ -14,18 +14,6 @@ REQUIRES = [
 ]
 
 
-class PyTest(TestCommand):
-    def finalize_options(self):
-        TestCommand.finalize_options(self)
-        self.test_args = ['-s']
-        self.test_suite = True
-
-    def run_tests(self):
-        import pytest
-        errcode = pytest.main(self.test_args)
-        sys.exit(errcode)
-
-
 def find_version(fname):
     '''Attempts to find the version number in the file names fname.
     Raises RuntimeError if not found.
@@ -76,8 +64,5 @@ setup(
         'console_scripts': [
             "qcache = qcache:main"
         ]
-    },
-    tests_require=['pytest',
-                   'freezegun'],
-    cmdclass={'test': PyTest}
+    }
 )

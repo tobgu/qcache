@@ -8,6 +8,9 @@ QCache
 .. image:: https://badge.fury.io/py/qcache.svg
     :target: https://badge.fury.io/py/qcache
 
+.. image:: http://codecov.io/github/tobgu/qcache/coverage.svg?branch=master
+    :target: http://codecov.io/github/tobgu/qcache?branch=master
+
 .. _Memcached: http://memcached.org/
 
 QCache is a key-table cache, an in memory cache server with analytical query capabilities.
