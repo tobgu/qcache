@@ -15,7 +15,7 @@ def test():
 @task
 def coverage():
     run('python -m py.test --cov=qcache', pty=True)
-    run('coverage -m', pty=True)
+    run('coverage report -m', pty=True)
     run('coverage html', pty=True)
 
 
