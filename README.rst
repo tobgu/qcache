@@ -329,8 +329,6 @@ These may or may not be realized, it's far from sure that all of the ideas are g
 * Stream data into dataframe rather than waiting for complete input, chunked HTTP upload or similar.
 * Streaming proxy to allow clients to only know about one endpoint.
 * Configurable URL prefix to allow being mounted at arbitrary position behind a proxy.
-* POST to query (using .../q/). This would potentially allow larger queries.
-* Return information about the full query result size before any slicing was done to facilitate paging.
 * Make it possible to execute multiple queries and return multiple responses in one request (qs=,/qs/).
 * Allow post with data and query in one request, this will guarantee progress
   as long as the dataset fits in memory. {"query": ..., "dataset": ...}

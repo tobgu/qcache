@@ -65,7 +65,8 @@ class SharedTest(AsyncHTTPTestCase):
 class TestBaseCases(SharedTest):
 
     def test_404_when_item_is_missing(self):
-        response = self.fetch('/dataset/abc')
+        url = url_concat('/dataset/abc', {'q': json.dumps('{}')})
+        response = self.fetch(url)
         assert response.code == 404
 
     def test_upload_json_query_json(self):
@@ -84,6 +85,47 @@ class TestBaseCases(SharedTest):
         assert response.code == 200
         assert from_csv(response.body) == [{'baz': '1', 'bar': '10'}]  # NB: Strings for numbers here
 
+
+class TestQueryWithPost(SharedTest):
+
+    def post_query_json(self, url, query):
+        return self.fetch(url, headers={'Accept': 'application/json, text/csv', 'Content-Type': 'application/json'},
+                          method="POST", body=to_json(query))
+
+    def test_upload_json_post_query_json(self):
+        response = self.post_json('/dataset/abc', [{'foo': 1, 'bar': 10}, {'foo': 2, 'bar': 20}])
+        assert response.code == 201
+
+        response = self.post_query_json('/dataset/abc/q', {'where': ['==', 'foo', 1]})
+        assert response.code == 200
+        assert json.loads(response.body) == [{'foo': 1, 'bar': 10}]
+
+    def test_upload_json_post_query_json_malformed_query(self):
+        response = self.post_json('/dataset/abc', [{'foo': 1, 'bar': 10}, {'foo': 2, 'bar': 20}])
+        assert response.code == 201
+
+        response = self.post_query_json('/dataset/abc/q', {'blabb': ['==', 'foo', 1]})
+        assert response.code == 400
+
+    def test_delete_against_q_endpoint_is_404(self):
+        response = self.post_json('/dataset/abc', [{'foo': 1, 'bar': 10}, {'foo': 2, 'bar': 20}])
+        assert response.code == 201
+
+        response = self.fetch('/dataset/abc/q', method='DELETE')
+        assert response.code == 404
+
+        response = self.fetch('/dataset/abc', method='DELETE')
+        assert response.code == 200
+
+    def test_get_against_q_endpoint_is_404(self):
+        response = self.post_json('/dataset/abc', [{'foo': 1, 'bar': 10}, {'foo': 2, 'bar': 20}])
+        assert response.code == 201
+
+        response = self.query_json('/dataset/abc/q', query={})
+        assert response.code == 404
+
+        response = self.query_json('/dataset/abc', query={})
+        assert response.code == 200
 
 class TestSlicing(SharedTest):
     def test_unsliced_size_header_indicates_the_dataset_size_before_slicing_it(self):
@@ -417,7 +459,8 @@ class TestSSLServerWithSSLAndBasicAuth(SSLTestBase):
         assert response.code == 401
 
     def test_fetch_data_correct_credentials(self):
-        response = self.fetch('/dataset/XYZ', validate_cert=False, auth_username='foo', auth_password='bar')
+        url = url_concat('/dataset/XYZ', {'q': json.dumps('{}')})
+        response = self.fetch(url, validate_cert=False, auth_username='foo', auth_password='bar')
         assert response.code == 404
 
     def test_fetch_statistics_missing_credentials(self):
@@ -427,3 +470,6 @@ class TestSSLServerWithSSLAndBasicAuth(SSLTestBase):
     def test_fetch_statistics_correct_credentials(self):
         response = self.fetch('/statistics', validate_cert=False, auth_username='foo', auth_password='bar')
         assert response.code == 200
+
+# Delete against a Q endpoint is a 404
+# Get against a Q endpoint is a 404

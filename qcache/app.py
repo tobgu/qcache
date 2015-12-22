@@ -141,7 +141,7 @@ class DatasetHandler(RequestHandler):
 
         return dtypes
 
-    def get(self, dataset_key):
+    def query(self, dataset_key, q):
         t0 = time.time()
         accept_type = self.accept_type()
         if dataset_key not in self.dataset_cache:
@@ -152,14 +152,6 @@ class DatasetHandler(RequestHandler):
             self.stats.inc('miss_count')
             self.stats.inc('age_evict_count')
             raise HTTPError(ResponseCode.NOT_FOUND)
-
-        try:
-            q_json = self.get_argument('q', default='')
-            q = json.loads(q_json)
-        except ValueError:
-            self.write(json.dumps({'error': 'Could not load JSON: {json}'.format(json=json)}))
-            self.set_status(ResponseCode.BAD_REQUEST)
-            return
 
         qf = self.dataset_cache[dataset_key]
         try:
@@ -180,6 +172,25 @@ class DatasetHandler(RequestHandler):
         self.stats.inc('hit_count')
         self.stats.append('query_durations', time.time() - t0)
 
+    def q_json_to_dict(self, q_json):
+        try:
+            return json.loads(q_json)
+        except ValueError:
+            self.write(json.dumps({'error': 'Could not load JSON: {json}'.format(json=json)}))
+            self.set_status(ResponseCode.BAD_REQUEST)
+
+        return None
+
+    def get(self, dataset_key, optional_q):
+        if optional_q:
+            # There should not be a q URL for the GET method, it's supposed to take
+            # q as a query parameter
+            raise HTTPError(ResponseCode.NOT_FOUND)
+
+        q_dict = self.q_json_to_dict(self.get_argument('q', default=''))
+        if q_dict is not None:
+            self.query(dataset_key, q_dict)
+
     def post_query_processing(self):
         if self.state.query_count % 10 == 0:
             # Run a collect every now and then. It reduces the process memory consumption
@@ -188,7 +199,13 @@ class DatasetHandler(RequestHandler):
 
         self.state.query_count += 1
 
-    def post(self, dataset_key):
+    def post(self, dataset_key, optional_q):
+        if optional_q:
+            q_dict = self.q_json_to_dict(self.request.body)
+            if q_dict is not None:
+                self.query(dataset_key, q_dict)
+            return
+
         t0 = time.time()
         if dataset_key in self.dataset_cache:
             self.stats.inc('replace_count')
@@ -214,7 +231,11 @@ class DatasetHandler(RequestHandler):
         self.stats.append('store_durations', time.time() - t0)
         self.write("")
 
-    def delete(self, dataset_key):
+    def delete(self, dataset_key, optional_q):
+        if optional_q:
+            # There should not be a q parameter for the delete method
+            raise HTTPError(ResponseCode.NOT_FOUND)
+
         if dataset_key in self.dataset_cache:
             del self.dataset_cache[dataset_key]
 
@@ -245,7 +266,7 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
 
     stats = Statistics(buffer_size=statistics_buffer_size)
     return Application([
-        url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)".format(url_prefix=url_prefix),
+        url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)/?(q)?".format(url_prefix=url_prefix),
             DatasetHandler,
             dict(dataset_cache=DatasetCache(max_size=max_cache_size, max_age=max_age),
                  state=AppState(),
