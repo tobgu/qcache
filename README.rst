@@ -157,7 +157,7 @@ Clauses
 .. code:: python
 
    {"where": ["&", [">", "foo", 1],
-                  ["==", "bar", 2]]}
+                   ["==", "bar", 2]]}
 
 The following operators are supported:
 

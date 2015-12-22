@@ -53,9 +53,25 @@ def test_and(basic_frame):
     assert_rows(frame, ['aaa'])
 
 
+def test_and_with_only_one_clause(basic_frame):
+    frame = basic_frame.query({'where': ["&", ["==", "foo", "'aaa'"]]})
+    assert_rows(frame, ['aaa'])
+
+    frame = basic_frame.query({'where': ["&", ["==", "foo", "'abc'"]]})
+    assert_rows(frame, [])
+
+
 def test_or(basic_frame):
     frame = basic_frame.query({'where': ["|", ["==", "baz", 5], ["==", "baz", 7]]})
     assert_rows(frame, ['bbb', 'aaa'])
+
+
+def test_or_with_only_one_clause(basic_frame):
+    frame = basic_frame.query({'where': ["|", ["==", "foo", "'aaa'"]]})
+    assert_rows(frame, ['aaa'])
+
+    frame = basic_frame.query({'where': ["|", ["==", "foo", "'abc'"]]})
+    assert_rows(frame, [])
 
 
 def test_col_in_list(basic_frame):

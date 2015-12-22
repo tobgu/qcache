@@ -60,10 +60,13 @@ def build_filter(q):
         _, arg1, arg2 = q
         result = build_filter(arg1) + " " + op + " " + build_filter(arg2)
     elif op in ('&', '|'):
-        if len(q) < 3:
+        if len(q) < 2:
             raise_malformed("Invalid number of arguments", q)
-
-        result = ' {op} '.format(op=op).join(build_filter(x) for x in q[1:])
+        elif len(q) == 2:
+            # Conjunctions and disjunctions with only one clause are OK
+            result = build_filter(q[1])
+        else:
+            result = ' {op} '.format(op=op).join(build_filter(x) for x in q[1:])
     elif op == 'in':
         if len(q) != 3:
             raise_malformed("Invalid number of arguments", q)
