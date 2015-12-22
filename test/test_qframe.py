@@ -89,6 +89,17 @@ def test_string_in_col(basic_frame):
     frame = basic_frame.query({'where': ["in", "'bb'", "foo"]})
     assert_rows(frame, ['bbb'])
 
+
+def test_unknown_column_name(basic_frame):
+    with pytest.raises(MalformedQueryException):
+        basic_frame.query({'where': ["==", "unknown", 3]})
+
+
+def test_invalid_column_name(basic_frame):
+    with pytest.raises(MalformedQueryException):
+        basic_frame.query({'where': ["==", "<foo:3>", 3]})
+
+
 # UndefinedVariableError, happens when row is referred that does not exist
 # Error cases
 

@@ -83,7 +83,10 @@ def _do_filter(dataframe, filter_q):
     if filter_q:
         assert_list('where', filter_q)
         filter_str = build_filter(filter_q)
-        return dataframe.query(filter_str)
+        try:
+            return dataframe.query(filter_str)
+        except SyntaxError:
+            raise_malformed('Syntax error in where clause', filter_q)
 
     return dataframe
 
