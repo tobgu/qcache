@@ -169,7 +169,7 @@ Negation
 --------
 .. code:: python
 
-   {"where": ["!", ["=", "foo",  1]]}
+   {"where": ["!", ["==", "foo",  1]]}
 
 
 Ordering
