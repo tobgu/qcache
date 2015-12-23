@@ -34,61 +34,79 @@ def assert_list(name, l):
         raise_malformed('Invalid format for {name}'.format(name=name), l)
 
 
-def build_filter(q):
-    if type(q) is not list:
-        return unicode(q)
+class Env(object):
+    pass
 
-    if not q:
-        raise_malformed("Empty expression not allowed", q)
 
-    op = q[0]
-    if op == "!":
-        if len(q) != 2:
-            raise_malformed("! is a single arity operator, invalid number of arguments", q)
+class Filter(object):
+    def __init__(self):
+        self.env_counter = 0
+        self.env = Env()
 
-        result = "not " + build_filter(q[1])
-    elif op == "isnull":
-        if len(q) != 2:
-            raise_malformed("! is a single arity operator, invalid number of arguments", q)
+    def filter(self, dataframe, filter_q):
+        if filter_q:
+            assert_list('where', filter_q)
+            filter_str = self._build_filter(filter_q)
+            try:
+                # The filter string may contain references to variables in env.
+                # That's why it is defined here.
+                env = self.env
+                return dataframe.query(filter_str)
+            except SyntaxError:
+                raise_malformed('Syntax error in where clause', filter_q)
 
-        # Slightly hacky but the only way I've come up with so far.
-        result = "({arg} != {arg})".format(arg=q[1])
-    elif op in ('==', '!=', '<', '<=', '>', '>='):
-        if len(q) != 3:
-            raise_malformed("Invalid number of arguments", q)
+        return dataframe
 
-        _, arg1, arg2 = q
-        result = build_filter(arg1) + " " + op + " " + build_filter(arg2)
-    elif op in ('&', '|'):
-        if len(q) < 2:
-            raise_malformed("Invalid number of arguments", q)
-        elif len(q) == 2:
-            # Conjunctions and disjunctions with only one clause are OK
-            result = build_filter(q[1])
+    def _build_filter(self, q):
+        if type(q) is not list:
+            return unicode(q)
+
+        if not q:
+            raise_malformed("Empty expression not allowed", q)
+
+        op = q[0]
+        if op == "!":
+            if len(q) != 2:
+                raise_malformed("! is a single arity operator, invalid number of arguments", q)
+
+            result = "not " + self._build_filter(q[1])
+        elif op == "isnull":
+            if len(q) != 2:
+                raise_malformed("! is a single arity operator, invalid number of arguments", q)
+
+            # Slightly hacky but the only way I've come up with so far.
+            result = "({arg} != {arg})".format(arg=q[1])
+        elif op in ('==', '!=', '<', '<=', '>', '>='):
+            if len(q) != 3:
+                raise_malformed("Invalid number of arguments", q)
+
+            _, arg1, arg2 = q
+            result = self._build_filter(arg1) + " " + op + " " + self._build_filter(arg2)
+        elif op in ('&', '|'):
+            if len(q) < 2:
+                raise_malformed("Invalid number of arguments", q)
+            elif len(q) == 2:
+                # Conjunctions and disjunctions with only one clause are OK
+                result = self._build_filter(q[1])
+            else:
+                result = ' {op} '.format(op=op).join(self._build_filter(x) for x in q[1:])
+        elif op == 'in':
+            if len(q) != 3:
+                raise_malformed("Invalid number of arguments", q)
+
+            _, arg1, arg2 = q
+            var_name = self._insert_in_env(arg2)
+            result = '{arg1} in @env.{var_name}'.format(arg1=arg1, var_name=var_name)
         else:
-            result = ' {op} '.format(op=op).join(build_filter(x) for x in q[1:])
-    elif op == 'in':
-        if len(q) != 3:
-            raise_malformed("Invalid number of arguments", q)
+            raise_malformed("Unknown operator", q)
 
-        _, arg1, arg2 = q
-        result = '{arg1} in {arg2}'.format(arg1=arg1, arg2=arg2)
-    else:
-        raise_malformed("Unknown operator", q)
+        return "({result})".format(result=result)
 
-    return "({result})".format(result=result)
-
-
-def _do_filter(dataframe, filter_q):
-    if filter_q:
-        assert_list('where', filter_q)
-        filter_str = build_filter(filter_q)
-        try:
-            return dataframe.query(filter_str)
-        except SyntaxError:
-            raise_malformed('Syntax error in where clause', filter_q)
-
-    return dataframe
+    def _insert_in_env(self, variable):
+        var_name = 'var_{count}'.format(count=self.env_counter)
+        setattr(self.env, var_name, variable)
+        self.env_counter += 1
+        return var_name
 
 
 def _group_by(dataframe, group_by_q):
@@ -191,7 +209,8 @@ def _query(dataframe, q):
             keys=', '.join(key_set.difference(QUERY_CLAUSES))))
 
     try:
-        filtered_df = _do_filter(dataframe, q.get('where'))
+        filter = Filter()
+        filtered_df = filter.filter(dataframe, q.get('where'))
         grouped_df = _group_by(filtered_df, q.get('group_by'))
         distinct_df = _distinct(grouped_df, q.get('distinct'))
         projected_df = _project(distinct_df, q.get('select'))
@@ -338,7 +357,8 @@ class QFrame(object):
 
     @staticmethod
     def from_dicts(d):
-        return QFrame(DataFrame.from_records(d))
+        f = QFrame(DataFrame.from_records(d))
+        return f
 
     def query(self, q):
         if 'update' in q:

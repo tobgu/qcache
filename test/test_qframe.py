@@ -84,9 +84,9 @@ def test_null_value(basic_frame):
     assert_rows(frame, ['ccc'])
 
 
-@pytest.mark.skipif(True, reason='This should work I think, but it does not... Perhaps a bug in Pandas.')
+@pytest.mark.skipif(True, reason='This should work I think, but it does not...')
 def test_string_in_col(basic_frame):
-    frame = basic_frame.query({'where': ["in", "'bb'", "foo"]})
+    frame = basic_frame.query({'where': ["contains", "foo", "'bb'"]})
     assert_rows(frame, ['bbb'])
 
 

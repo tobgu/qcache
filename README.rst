@@ -344,6 +344,7 @@ These may or may not be realized, it's far from sure that all of the ideas are g
   of pandas and numexpr to avoid all the dependencies that needs to be installed for compilation.
 * Investigate type hints for pandas categorials on enum-like values to improve storage
   layout and filter speed.
+* Support math functions as part of the where clause (see pandas expr.py/ops.py)
 
 ************
 Contributing
