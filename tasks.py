@@ -54,3 +54,15 @@ def publish(test=False):
         run('python setup.py register -r pypitest sdist upload -r pypitest')
     else:
         run("python setup.py register sdist upload")
+
+@task
+def build_image():
+    from qcache import __version__ as version
+    run("sudo docker build -t tobgu/qcache:{version} .".format(version=version))
+    run("sudo docker tag -f tobgu/qcache:{version} tobgu/qcache:latest".format(version=version))
+
+@task
+def push_image():
+    from qcache import __version__ as version
+    run("sudo docker push tobgu/qcache:{version}".format(version=version))
+    run("sudo docker push tobgu/qcache:latest")
