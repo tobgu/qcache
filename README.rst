@@ -3,7 +3,7 @@ QCache
 ======
 
 .. image:: https://travis-ci.org/tobgu/qcache.png?branch=master
-        :target: https://travis-ci.org/tobgu/qcache
+    :target: https://travis-ci.org/tobgu/qcache
 
 .. image:: https://badge.fury.io/py/qcache.svg
     :target: https://badge.fury.io/py/qcache
