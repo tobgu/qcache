@@ -245,6 +245,7 @@ def _project(dataframe, project_q):
     elif alias_expressions:
         dataframe = _alias(dataframe, alias_expressions)
     else:
+        # Nothing to do here
         pass
 
     columns = [e if type(e) is not list else e[1] for e in project_q]
@@ -252,7 +253,8 @@ def _project(dataframe, project_q):
     try:
         return dataframe[columns]
     except KeyError:
-        raise_malformed("Selected column not in table", columns)
+        missing_columns = set(columns) - set(dataframe.columns.values)
+        raise_malformed("Selected columns not in table", list(missing_columns))
 
 
 def _order_by(dataframe, order_q):

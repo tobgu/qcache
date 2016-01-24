@@ -225,7 +225,7 @@ class TestInvalidQueries(SharedTest):
 
     def test_missing_column_in_select(self):
         response = self.query_json('/dataset/abc', {'select': ['baz', 'foo']})
-        assert 'Selected column not in table' in json.loads(response.body)['error']
+        assert 'Selected columns not in table' in json.loads(response.body)['error']
 
     def test_missing_column_in_filter(self):
         response = self.query_json('/dataset/abc', {'where': ['>', 'baz', 1]})
