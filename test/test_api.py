@@ -85,6 +85,15 @@ class TestBaseCases(SharedTest):
         assert response.code == 200
         assert from_csv(response.body) == [{'baz': '1', 'bar': '10'}]  # NB: Strings for numbers here
 
+    def test_division_by_zero(self):
+        response = self.post_json('/dataset/abc', [{'foo': 1, 'bar': 0}])
+        assert response.code == 201
+
+        # Result of division by 0 will be transmitted as null/None
+        response = self.query_json('/dataset/abc', {'select': [['=', 'baz', ['/', 'foo', 'bar']]]})
+        assert response.code == 200
+        assert json.loads(response.body) == [{'baz': None}]
+
 
 class TestQueryWithPost(SharedTest):
 

@@ -292,6 +292,50 @@ def test_constant_string_aliasing(calculation_frame):
     ]
 
 
+def test_alias_as_sum_of_two_other_columns(calculation_frame):
+    frame = calculation_frame.query({"select": [["=", "baz", ["+", "bar", "foo"]]],
+                                     "limit": 2})
+
+    assert frame.to_dicts() == [
+        {"baz": 11},
+        {"baz": 12},
+    ]
+
+
+def test_alias_as_nested_expression(calculation_frame):
+    frame = calculation_frame.query({"select": [["=", "baz", ["+", ["*", "bar", 2], "foo"]]],
+                                     "limit": 2})
+
+    assert frame.to_dicts() == [
+        {"baz": 21},
+        {"baz": 23},
+    ]
+
+
+def test_alias_with_single_argument_function(calculation_frame):
+    frame = calculation_frame.query({"select": [["=", "baz", ["sqrt", ["+", 3, "foo"]]]],
+                                     "limit": 1})
+
+    assert frame.to_dicts() == [{"baz": 2}]
+
+
+@pytest.fixture
+def frame_with_zero():
+    data = """
+foo,bar
+1,0
+1,11"""
+
+    return QFrame.from_csv(data)
+
+
+def test_alias_with_division_by_zero(frame_with_zero):
+    frame = frame_with_zero.query({"select": [["=", "baz", ["/", "foo", "bar"]]],
+                                   "limit": 1})
+
+    assert frame.to_dicts() == [{"baz": float("inf")}]
+
+
 def test_invalid_alias_target_string_with_invalid_character(calculation_frame):
     with pytest.raises(MalformedQueryException):
         calculation_frame.query({"select": [["=", "ba/r", 1]]})
@@ -307,10 +351,31 @@ def test_aliasing_does_not_overwrite_original_qframe(calculation_frame):
     assert list(frame.columns.values) == ['baz']
     assert 'baz' not in list(calculation_frame.df.columns.values)
 
+
 def test_cannot_mix_aliasing_and_aggregation_expressions(calculation_frame):
     with pytest.raises(MalformedQueryException):
         calculation_frame.query({"select": [["=", "bar", 1], ["max", "foo"]],
                                  "group_by": ["bar"]})
+
+
+def test_aliasing_with_wrong_number_of_parameters_in_function(calculation_frame):
+    with pytest.raises(MalformedQueryException):
+        calculation_frame.query({"select": [["=", "baz", ["+", "bar", "foo", "foo"]]]})
+
+
+def test_aliasing_with_unknown_function(calculation_frame):
+    with pytest.raises(MalformedQueryException):
+        calculation_frame.query({"select": [["=", "baz", ["?", "bar", "foo"]]]})
+
+
+def test_aliasing_with_unknown_function_2(calculation_frame):
+    with pytest.raises(MalformedQueryException):
+        calculation_frame.query({"select": [["=", "baz", ["zin", "bar"]]]})
+
+
+def test_aliasing_with_invalid_arity(calculation_frame):
+    with pytest.raises(MalformedQueryException):
+        calculation_frame.query({"select": [["=", "baz", ["zin", "bar"], "foobar"]]})
 
 
 def test_multiple_aggregation_functions_without_group_by(calculation_frame):

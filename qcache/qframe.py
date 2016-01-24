@@ -169,6 +169,24 @@ ALIAS_STRING = "^([A-Za-z0-9_-]+)$"
 ALIAS_RE = re.compile(ALIAS_STRING)
 
 
+def _build_eval_expression(expr):
+    if type(expr) is list:
+        if len(expr) == 3:
+            arg1 = _build_eval_expression(expr[1])
+            arg2 = _build_eval_expression(expr[2])
+            op = expr[0]
+            return "({arg1} {op} {arg2})".format(arg1=arg1, op=op, arg2=arg2)
+
+        if len(expr) == 2:
+            arg1 = _build_eval_expression(expr[1])
+            op = expr[0]
+            return "{op}({arg1})".format(op=op, arg1=arg1)
+
+        raise_malformed('Invalid number of arguments', expr)
+
+    return expr
+
+
 def _alias(dataframe, expressions):
     # Aliasing is done in place, avoid overwriting original dataframe
     dataframe = dataframe.copy()
@@ -181,10 +199,28 @@ def _alias(dataframe, expressions):
         if not re.match(ALIAS_RE, destination):
             raise_malformed('Invalid alias, must match {alias}'.format(alias=ALIAS_STRING), expression)
 
-        #TODO: Make sure not to overwrite original dataframe!
-        dataframe.eval('{destination} = {source}'.format(destination=destination, source=source))
+        eval_expr = _build_eval_expression(source)
+        try:
+            dataframe.eval('{destination} = {expr}'.format(destination=destination, expr=eval_expr))
+        except (SyntaxError, ValueError):
+            raise_malformed('Unknown function in alias', source)
 
     return dataframe
+
+
+def classify_expressions(project_q):
+    aggregate_functions = {}
+    alias_expressions = []
+    for expression in project_q:
+        if is_aggregate_function(expression):
+            aggregate_functions[expression[1]] = expression[0]
+        elif is_alias_assignment(expression):
+            alias_expressions.append(expression)
+        elif type(expression) is list:
+            raise_malformed('Invalid expression in select', expression)
+
+    return aggregate_functions, alias_expressions
+
 
 def _project(dataframe, project_q):
     if not project_q:
@@ -196,8 +232,8 @@ def _project(dataframe, project_q):
         # Special case for count only, ~equal to SQL count(*)
         return DataFrame.from_dict({'count': [len(dataframe)]})
 
-    aggregate_fns = {e[1]: e[0] for e in project_q if is_aggregate_function(e)}
-    alias_expressions = [e for e in project_q if is_alias_assignment(e)]
+    aggregate_fns, alias_expressions = classify_expressions(project_q)
+
     if aggregate_fns and alias_expressions:
         raise_malformed("Cannot mix aliasing and aggregation functions", project_q)
 
