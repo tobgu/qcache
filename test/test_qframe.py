@@ -259,7 +259,6 @@ foo,bar
 
     return QFrame.from_csv(data)
 
-# All assignments, aliasing, etc. must start with an equal sign
 
 def test_column_aliasing(calculation_frame):
     frame = calculation_frame.query({"select": [["=", "baz", "foo"]]})
@@ -302,6 +301,11 @@ def test_invalid_alias_target_non_string(calculation_frame):
     with pytest.raises(MalformedQueryException):
         calculation_frame.query({"select": [["=", 23, 1]]})
 
+
+def test_aliasing_does_not_overwrite_original_qframe(calculation_frame):
+    frame = calculation_frame.query({"select": [["=", "baz", "foo"]]})
+    assert list(frame.columns.values) == ['baz']
+    assert 'baz' not in list(calculation_frame.df.columns.values)
 
 def test_cannot_mix_aliasing_and_aggregation_expressions(calculation_frame):
     with pytest.raises(MalformedQueryException):

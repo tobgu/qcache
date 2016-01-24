@@ -170,6 +170,9 @@ ALIAS_RE = re.compile(ALIAS_STRING)
 
 
 def _alias(dataframe, expressions):
+    # Aliasing is done in place, avoid overwriting original dataframe
+    dataframe = dataframe.copy()
+
     for expression in expressions:
         destination, source = expression[1], expression[2]
         if not isinstance(destination, basestring):
@@ -181,6 +184,7 @@ def _alias(dataframe, expressions):
         #TODO: Make sure not to overwrite original dataframe!
         dataframe.eval('{destination} = {source}'.format(destination=destination, source=source))
 
+    return dataframe
 
 def _project(dataframe, project_q):
     if not project_q:
@@ -202,7 +206,7 @@ def _project(dataframe, project_q):
     elif aggregate_fns:
         return _aggregate_without_group_by(dataframe, project_q, aggregate_fns)
     elif alias_expressions:
-        _alias(dataframe, alias_expressions)
+        dataframe = _alias(dataframe, alias_expressions)
     else:
         pass
 
