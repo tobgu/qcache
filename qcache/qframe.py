@@ -121,6 +121,10 @@ def _group_by(dataframe, group_by_q):
         raise_malformed('Group by column not in table', group_by_q)
 
 
+def is_aggregate_function(expr):
+    return type(expr) is list and len(expr) == 2
+
+
 def _project(dataframe, project_q):
     if not project_q:
         return dataframe
@@ -131,26 +135,29 @@ def _project(dataframe, project_q):
         # Special case for count only, ~equal to SQL count(*)
         return DataFrame.from_dict({'count': [len(dataframe)]})
 
-    aggregate_fns = {e[1]: e[0] for e in project_q if type(e) is list}
-    if aggregate_fns:
-        if not isinstance(dataframe, DataFrameGroupBy):
-            if len(aggregate_fns) > 1:
-                raise_malformed("Multiple aggregation functions without group by", project_q)
+    if isinstance(dataframe, DataFrameGroupBy):
+        aggregate_fns = {e[1]: e[0] for e in project_q if is_aggregate_function(e)}
+        dataframe = dataframe.agg(aggregate_fns)
 
-            # Intricate, apply the selected function to the selected column
-            arg, fn_name = next(iter(aggregate_fns.items()))
-            dataframe = dataframe[[arg]]
+        # If no aggregate functions then error
+    else:
+        aggregate_fns = {e[1]: e[0] for e in project_q if is_aggregate_function(e)}
+        if aggregate_fns:
+            results = {}
+            for column_name, fn_name in aggregate_fns.items():
+                # Intricate, apply the selected function to the selected column
+                temp_dataframe = dataframe[[column_name]]
+                fn = getattr(temp_dataframe, fn_name, None)
+                if not fn or not callable(fn):
+                    raise_malformed('Unknown function', project_q)
 
-            fn = getattr(dataframe, fn_name, None)
-            if not fn or not callable(fn):
-                raise_malformed('Unknown function', project_q)
-
-            result = fn(axis=0)[0]
+                results["{fn_name}_{column_name}".format(fn_name=fn_name, column_name=column_name)] =\
+                    [fn(axis=0)[0]]
 
             # The response must be a data frame
-            return DataFrame.from_dict({fn_name: [result]})
+            return DataFrame.from_dict(results)
 
-        dataframe = dataframe.agg(aggregate_fns)
+    # Pick out the actual selections to be made (including aliasing) earlier
 
     columns = [e if type(e) is not list else e[1] for e in project_q]
     try:
@@ -376,7 +383,7 @@ class QFrame(object):
         return self.df.to_json(orient='records')
 
     def to_dicts(self):
-        return self.df.to_records(index=False)
+        return self.df.to_dict(orient='records')
 
     @property
     def columns(self):

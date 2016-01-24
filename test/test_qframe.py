@@ -169,7 +169,7 @@ count
 
 def test_max_without_aggregation(basic_frame):
     expected = QFrame.from_csv("""
-max
+max_baz
 9""")
 
     frame = basic_frame.query({'select': [['max', 'baz']]})
@@ -220,6 +220,47 @@ def test_unicode_content_from_dicts():
     frame = input_frame.query({'where': ["==", "bar", u"'räksmörgås'"]})
 
     assert_rows(frame, ['bbb'])
+
+# * Error message when columns are not in frame. Specify which columns that are missing.
+# * Error message when group_by but no aggregation functions
+# * Column aliasing
+#   - Column
+#   - Constant
+# * Derived/calculated functions
+#   - Based on two or more columns
+#   - Based on one column and one constant
+#   - Based only on constants
+#   - Auto naming/aliasing
+# * Group by without aggregation is an error
+# * Subselect with "from" containing another query
+# * User defined functions
+
+@pytest.fixture
+def calculation_frame():
+    data = """
+foo,bar
+1,10
+1,11
+2,20
+3,30
+3,33"""
+
+    return QFrame.from_csv(data)
+
+
+#def test_derived_column_from_two_columns(calculation_frame):
+#    frame = calculation_frame.query({"select": [["/", "bar", "foo"]]})
+#    assert frame.to_dicts() == [
+#        {"bar/foo": 10},
+#        {"bar/foo": 11},
+#        {"bar/foo": 10},
+#        {"bar/foo": 10},
+#        {"bar/foo": 11}
+#    ]
+
+def test_multiple_calc_functions_without_group_by(calculation_frame):
+    frame = calculation_frame.query({"select": [["max", "bar"], ["min", "foo"]]})
+    assert frame.to_dicts() == [{"max_bar": 33, "min_foo": 1}]
 
 
 #################  Update ######################

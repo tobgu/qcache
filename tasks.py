@@ -9,7 +9,7 @@ build_dir = os.path.join(docs_dir, '_build')
 
 @task
 def test():
-    run('python -m py.test -s', pty=True)
+    run('python -m py.test -s -v', pty=True)
 
 
 @task
@@ -66,3 +66,5 @@ def push_image():
     from qcache import __version__ as version
     run("sudo docker push tobgu/qcache:{version}".format(version=version))
     run("sudo docker push tobgu/qcache:latest")
+
+import sys, cgitb
