@@ -137,9 +137,14 @@ def _project(dataframe, project_q):
 
     if isinstance(dataframe, DataFrameGroupBy):
         aggregate_fns = {e[1]: e[0] for e in project_q if is_aggregate_function(e)}
-        dataframe = dataframe.agg(aggregate_fns)
+        if not aggregate_fns:
+            raise_malformed("Aggregate function required when group_by is specified", project_q)
 
-        # If no aggregate functions then error
+        try:
+            dataframe = dataframe.agg(aggregate_fns)
+        except AttributeError as e:
+            functions = [fn_name for fn_name in aggregate_fns.values() if fn_name in str(e)]
+            raise_malformed("Unknown aggregation function '{fn}'".format(fn=functions[0]), project_q)
     else:
         aggregate_fns = {e[1]: e[0] for e in project_q if is_aggregate_function(e)}
         if aggregate_fns:

@@ -158,6 +158,20 @@ www,1""")
     assert frame.to_csv() == expected.to_csv()
 
 
+def test_unknown_aggregation_function(basic_frame):
+    with pytest.raises(MalformedQueryException):
+        basic_frame.query({
+            'select': ['qux', ['foo_bar', 'baz']],
+            'group_by': ['qux']})
+
+
+def test_missing_aggregation_function(basic_frame):
+    with pytest.raises(MalformedQueryException):
+        basic_frame.query({
+            'select': ['qux'],
+            'group_by': ['qux']})
+
+
 def test_count_without_aggregation(basic_frame):
     expected = QFrame.from_csv("""
 count
@@ -222,7 +236,6 @@ def test_unicode_content_from_dicts():
     assert_rows(frame, ['bbb'])
 
 # * Error message when columns are not in frame. Specify which columns that are missing.
-# * Error message when group_by but no aggregation functions
 # * Column aliasing
 #   - Column
 #   - Constant
@@ -231,7 +244,6 @@ def test_unicode_content_from_dicts():
 #   - Based on one column and one constant
 #   - Based only on constants
 #   - Auto naming/aliasing
-# * Group by without aggregation is an error
 # * Subselect with "from" containing another query
 # * User defined functions
 
@@ -248,15 +260,15 @@ foo,bar
     return QFrame.from_csv(data)
 
 
-#def test_derived_column_from_two_columns(calculation_frame):
-#    frame = calculation_frame.query({"select": [["/", "bar", "foo"]]})
-#    assert frame.to_dicts() == [
-#        {"bar/foo": 10},
-#        {"bar/foo": 11},
-#        {"bar/foo": 10},
-#        {"bar/foo": 10},
-#        {"bar/foo": 11}
-#    ]
+def xtest_derived_column_from_two_columns(calculation_frame):
+   frame = calculation_frame.query({"select": [["/", "bar", "foo"]]})
+   assert frame.to_dicts() == [
+       {"bar/foo": 10},
+       {"bar/foo": 11},
+       {"bar/foo": 10},
+       {"bar/foo": 10},
+       {"bar/foo": 11}
+   ]
 
 def test_multiple_calc_functions_without_group_by(calculation_frame):
     frame = calculation_frame.query({"select": [["max", "bar"], ["min", "foo"]]})
