@@ -212,7 +212,7 @@ class TestInvalidQueries(SharedTest):
 
     def test_unknown_select_operator(self):
         response = self.query_json('/dataset/abc', {'select': [['baz', 'foo']]})
-        assert 'Unknown function' in json.loads(response.body)['error']
+        assert 'Unknown aggregation function' in json.loads(response.body)['error']
 
     def test_missing_column_in_select(self):
         response = self.query_json('/dataset/abc', {'select': ['baz', 'foo']})

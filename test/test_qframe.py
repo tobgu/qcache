@@ -293,6 +293,16 @@ def test_constant_string_aliasing(calculation_frame):
     ]
 
 
+def test_invalid_alias_target_string_with_invalid_character(calculation_frame):
+    with pytest.raises(MalformedQueryException):
+        calculation_frame.query({"select": [["=", "ba/r", 1]]})
+
+
+def test_invalid_alias_target_non_string(calculation_frame):
+    with pytest.raises(MalformedQueryException):
+        calculation_frame.query({"select": [["=", 23, 1]]})
+
+
 def test_cannot_mix_aliasing_and_aggregation_expressions(calculation_frame):
     with pytest.raises(MalformedQueryException):
         calculation_frame.query({"select": [["=", "bar", 1], ["max", "foo"]],

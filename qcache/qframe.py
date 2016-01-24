@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+import re
 from StringIO import StringIO
 from pandas import DataFrame, pandas
 from pandas.computation.ops import UndefinedVariableError
@@ -129,7 +130,7 @@ def is_alias_assignment(expr):
     """
     Examples:
     ['=', 'column_name', 1]                                       Constant assignment
-    ['=', 'column_name', 'other_columen']                         Basic aliasing
+    ['=', 'column_name', 'other_column']                         Basic aliasing
     ['=', 'column_name', ['sin', 'column_name']]
     ['=', 'column_name', ['+', 'column_name', 'other_column']]    Complex calculations
     """
@@ -157,17 +158,28 @@ def _aggregate_without_group_by(dataframe, project_q, aggregate_fns):
         temp_dataframe = dataframe[[column_name]]
         fn = getattr(temp_dataframe, fn_name, None)
         if not fn or not callable(fn):
-            raise_malformed('Unknown function', project_q)
+            raise_malformed('Unknown aggregation function', project_q)
 
         results[column_name] = [fn(axis=0)[0]]
 
     # The result must be a data frame
     return DataFrame.from_dict(results)
 
+ALIAS_STRING = "^([A-Za-z0-9_-]+)$"
+ALIAS_RE = re.compile(ALIAS_STRING)
+
 
 def _alias(dataframe, expressions):
     for expression in expressions:
-        dataframe.eval('{destination} = {source}'.format(destination=expression[1], source=expression[2]))
+        destination, source = expression[1], expression[2]
+        if not isinstance(destination, basestring):
+            raise_malformed('Invalid alias, must be a string', expression)
+
+        if not re.match(ALIAS_RE, destination):
+            raise_malformed('Invalid alias, must match {alias}'.format(alias=ALIAS_STRING), expression)
+
+        #TODO: Make sure not to overwrite original dataframe!
+        dataframe.eval('{destination} = {source}'.format(destination=destination, source=source))
 
 
 def _project(dataframe, project_q):
