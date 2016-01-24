@@ -183,7 +183,7 @@ count
 
 def test_max_without_aggregation(basic_frame):
     expected = QFrame.from_csv("""
-max_baz
+baz
 9""")
 
     frame = basic_frame.query({'select': [['max', 'baz']]})
@@ -261,18 +261,31 @@ foo,bar
 
 
 def xtest_derived_column_from_two_columns(calculation_frame):
-   frame = calculation_frame.query({"select": [["/", "bar", "foo"]]})
-   assert frame.to_dicts() == [
-       {"bar/foo": 10},
-       {"bar/foo": 11},
-       {"bar/foo": 10},
-       {"bar/foo": 10},
-       {"bar/foo": 11}
-   ]
+    frame = calculation_frame.query({"select": [["/", "bar", "foo"]]})
+    assert frame.to_dicts() == [
+        {"bar/foo": 10},
+        {"bar/foo": 11},
+        {"bar/foo": 10},
+        {"bar/foo": 10},
+        {"bar/foo": 11}
+    ]
+
+
+def xtest_column_aliasing(calculation_frame):
+    frame = calculation_frame.query({"select": [["=", "baz", "foo"]]})
+
+    assert frame.to_dicts() == [
+        {"baz": 10},
+        {"baz": 11},
+        {"baz": 20},
+        {"baz": 30},
+        {"baz": 33}
+    ]
+
 
 def test_multiple_calc_functions_without_group_by(calculation_frame):
     frame = calculation_frame.query({"select": [["max", "bar"], ["min", "foo"]]})
-    assert frame.to_dicts() == [{"max_bar": 33, "min_foo": 1}]
+    assert frame.to_dicts() == [{"bar": 33, "foo": 1}]
 
 
 #################  Update ######################

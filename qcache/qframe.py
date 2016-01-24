@@ -156,8 +156,7 @@ def _project(dataframe, project_q):
                 if not fn or not callable(fn):
                     raise_malformed('Unknown function', project_q)
 
-                results["{fn_name}_{column_name}".format(fn_name=fn_name, column_name=column_name)] =\
-                    [fn(axis=0)[0]]
+                results[column_name] = [fn(axis=0)[0]]
 
             # The response must be a data frame
             return DataFrame.from_dict(results)
