@@ -165,6 +165,11 @@ def _aggregate_without_group_by(dataframe, project_q, aggregate_fns):
     return DataFrame.from_dict(results)
 
 
+def _alias(dataframe, expressions):
+    for expression in expressions:
+        dataframe.eval('{destination} = {source}'.format(destination=expression[1], source=expression[2]))
+
+
 def _project(dataframe, project_q):
     if not project_q:
         return dataframe
@@ -176,20 +181,21 @@ def _project(dataframe, project_q):
         return DataFrame.from_dict({'count': [len(dataframe)]})
 
     aggregate_fns = {e[1]: e[0] for e in project_q if is_aggregate_function(e)}
-    alias_expr = [e for e in project_q if is_alias_assignment(e)]
-    if aggregate_fns and alias_expr:
+    alias_expressions = [e for e in project_q if is_alias_assignment(e)]
+    if aggregate_fns and alias_expressions:
         raise_malformed("Cannot mix aliasing and aggregation functions", project_q)
 
     if isinstance(dataframe, DataFrameGroupBy):
         dataframe = _aggregate(dataframe, project_q, aggregate_fns)
     elif aggregate_fns:
         return _aggregate_without_group_by(dataframe, project_q, aggregate_fns)
+    elif alias_expressions:
+        _alias(dataframe, alias_expressions)
     else:
         pass
 
-    # Pick out the actual selections to be made (including aliasing) earlier
-
     columns = [e if type(e) is not list else e[1] for e in project_q]
+
     try:
         return dataframe[columns]
     except KeyError:

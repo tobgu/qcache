@@ -259,28 +259,37 @@ foo,bar
 
     return QFrame.from_csv(data)
 
-
-def xtest_derived_column_from_two_columns(calculation_frame):
-    frame = calculation_frame.query({"select": [["/", "bar", "foo"]]})
-    assert frame.to_dicts() == [
-        {"bar/foo": 10},
-        {"bar/foo": 11},
-        {"bar/foo": 10},
-        {"bar/foo": 10},
-        {"bar/foo": 11}
-    ]
-
 # All assignments, aliasing, etc. must start with an equal sign
 
-def xtest_column_aliasing(calculation_frame):
+def test_column_aliasing(calculation_frame):
     frame = calculation_frame.query({"select": [["=", "baz", "foo"]]})
 
     assert frame.to_dicts() == [
-        {"baz": 10},
-        {"baz": 11},
-        {"baz": 20},
-        {"baz": 30},
-        {"baz": 33}
+        {"baz": 1},
+        {"baz": 1},
+        {"baz": 2},
+        {"baz": 3},
+        {"baz": 3}
+    ]
+
+
+def test_constant_int_aliasing(calculation_frame):
+    frame = calculation_frame.query({"select": [["=", "baz", 55]],
+                                     "limit": 2})
+
+    assert frame.to_dicts() == [
+        {"baz": 55},
+        {"baz": 55},
+    ]
+
+
+def test_constant_string_aliasing(calculation_frame):
+    frame = calculation_frame.query({"select": [["=", "baz", "'qux'"]],
+                                     "limit": 2})
+
+    assert frame.to_dicts() == [
+        {"baz": "qux"},
+        {"baz": "qux"},
     ]
 
 
