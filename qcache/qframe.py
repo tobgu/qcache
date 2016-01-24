@@ -125,6 +125,46 @@ def is_aggregate_function(expr):
     return type(expr) is list and len(expr) == 2
 
 
+def is_alias_assignment(expr):
+    """
+    Examples:
+    ['=', 'column_name', 1]                                       Constant assignment
+    ['=', 'column_name', 'other_columen']                         Basic aliasing
+    ['=', 'column_name', ['sin', 'column_name']]
+    ['=', 'column_name', ['+', 'column_name', 'other_column']]    Complex calculations
+    """
+    return type(expr) is list and len(expr) == 3 and expr[0] == '='
+
+
+def _aggregate(dataframe_group_by, project_q, aggregate_fns):
+    if not aggregate_fns:
+        raise_malformed("Aggregate function required when group_by is specified", project_q)
+
+    try:
+        return dataframe_group_by.agg(aggregate_fns)
+    except AttributeError as e:
+        functions = [fn_name for fn_name in aggregate_fns.values() if fn_name in str(e)]
+        raise_malformed("Unknown aggregation function '{fn}'".format(fn=functions[0]), project_q)
+
+
+def _aggregate_without_group_by(dataframe, project_q, aggregate_fns):
+    if len(aggregate_fns) != len(project_q):
+        raise_malformed('Cannot mix aggregation functions and columns without group_by clause', project_q)
+
+    results = {}
+    for column_name, fn_name in aggregate_fns.items():
+        # Intricate, apply the selected function to the selected column
+        temp_dataframe = dataframe[[column_name]]
+        fn = getattr(temp_dataframe, fn_name, None)
+        if not fn or not callable(fn):
+            raise_malformed('Unknown function', project_q)
+
+        results[column_name] = [fn(axis=0)[0]]
+
+    # The result must be a data frame
+    return DataFrame.from_dict(results)
+
+
 def _project(dataframe, project_q):
     if not project_q:
         return dataframe
@@ -135,31 +175,17 @@ def _project(dataframe, project_q):
         # Special case for count only, ~equal to SQL count(*)
         return DataFrame.from_dict({'count': [len(dataframe)]})
 
+    aggregate_fns = {e[1]: e[0] for e in project_q if is_aggregate_function(e)}
+    alias_expr = [e for e in project_q if is_alias_assignment(e)]
+    if aggregate_fns and alias_expr:
+        raise_malformed("Cannot mix aliasing and aggregation functions", project_q)
+
     if isinstance(dataframe, DataFrameGroupBy):
-        aggregate_fns = {e[1]: e[0] for e in project_q if is_aggregate_function(e)}
-        if not aggregate_fns:
-            raise_malformed("Aggregate function required when group_by is specified", project_q)
-
-        try:
-            dataframe = dataframe.agg(aggregate_fns)
-        except AttributeError as e:
-            functions = [fn_name for fn_name in aggregate_fns.values() if fn_name in str(e)]
-            raise_malformed("Unknown aggregation function '{fn}'".format(fn=functions[0]), project_q)
+        dataframe = _aggregate(dataframe, project_q, aggregate_fns)
+    elif aggregate_fns:
+        return _aggregate_without_group_by(dataframe, project_q, aggregate_fns)
     else:
-        aggregate_fns = {e[1]: e[0] for e in project_q if is_aggregate_function(e)}
-        if aggregate_fns:
-            results = {}
-            for column_name, fn_name in aggregate_fns.items():
-                # Intricate, apply the selected function to the selected column
-                temp_dataframe = dataframe[[column_name]]
-                fn = getattr(temp_dataframe, fn_name, None)
-                if not fn or not callable(fn):
-                    raise_malformed('Unknown function', project_q)
-
-                results[column_name] = [fn(axis=0)[0]]
-
-            # The response must be a data frame
-            return DataFrame.from_dict(results)
+        pass
 
     # Pick out the actual selections to be made (including aliasing) earlier
 

@@ -270,6 +270,7 @@ def xtest_derived_column_from_two_columns(calculation_frame):
         {"bar/foo": 11}
     ]
 
+# All assignments, aliasing, etc. must start with an equal sign
 
 def xtest_column_aliasing(calculation_frame):
     frame = calculation_frame.query({"select": [["=", "baz", "foo"]]})
@@ -283,10 +284,20 @@ def xtest_column_aliasing(calculation_frame):
     ]
 
 
-def test_multiple_calc_functions_without_group_by(calculation_frame):
+def test_cannot_mix_aliasing_and_aggregation_expressions(calculation_frame):
+    with pytest.raises(MalformedQueryException):
+        calculation_frame.query({"select": [["=", "bar", 1], ["max", "foo"]],
+                                 "group_by": ["bar"]})
+
+
+def test_multiple_aggregation_functions_without_group_by(calculation_frame):
     frame = calculation_frame.query({"select": [["max", "bar"], ["min", "foo"]]})
     assert frame.to_dicts() == [{"bar": 33, "foo": 1}]
 
+
+def test_cannot_mix_aggregation_functions_and_columns_without_group_by(calculation_frame):
+    with pytest.raises(MalformedQueryException):
+        calculation_frame.query({"select": [["max", "bar"], "foo"]})
 
 #################  Update ######################
 
