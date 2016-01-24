@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.4.0 (2016-01-24)
+------------------
+* Sub query support with new 'from' clause
+* Column aliasing + support for calculated columns
+* Error message improvements
+
 0.3.0 (2015-12-23)
 ------------------
 * Accepts conjunctions and disjunctions with only one clause
