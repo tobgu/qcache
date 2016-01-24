@@ -387,6 +387,33 @@ def test_cannot_mix_aggregation_functions_and_columns_without_group_by(calculati
     with pytest.raises(MalformedQueryException):
         calculation_frame.query({"select": [["max", "bar"], "foo"]})
 
+################# Sub queries ###################
+
+@pytest.fixture
+def subselect_frame():
+    data = """
+foo,bar
+1,10
+1,15
+5,50"""
+
+    return QFrame.from_csv(data)
+
+
+def test_alias_aggregation_from_sub_select(subselect_frame):
+    frame = subselect_frame.query({"select": [["=", "foo_pct",
+                                               ["*", 100, ["/", "foo", "bar"]]]],
+                                   "from":
+                                       {"select": ["foo", ["sum", "bar"]],
+                                        "group_by": ["foo"]}
+    })
+
+    assert frame.to_dicts() == [
+        {"foo_pct": 4.0},
+        {"foo_pct": 10.0}
+    ]
+
+
 #################  Update ######################
 
 def assert_column(column, frame, expected):

@@ -13,8 +13,9 @@ CLAUSE_SELECT = 'select'
 CLAUSE_ORDER_BY = 'order_by'
 CLAUSE_OFFSET = 'offset'
 CLAUSE_LIMIT = 'limit'
+CLAUSE_FROM = 'from'
 QUERY_CLAUSES = {CLAUSE_WHERE, CLAUSE_GROUP_BY, CLAUSE_DISTINCT, CLAUSE_SELECT,
-                 CLAUSE_ORDER_BY, CLAUSE_OFFSET, CLAUSE_LIMIT}
+                 CLAUSE_ORDER_BY, CLAUSE_OFFSET, CLAUSE_LIMIT, CLAUSE_FROM}
 
 
 class MalformedQueryException(Exception):
@@ -304,6 +305,9 @@ def _query(dataframe, q):
             keys=', '.join(key_set.difference(QUERY_CLAUSES))))
 
     try:
+        if CLAUSE_FROM in q:
+            dataframe, _ = _query(dataframe, q[CLAUSE_FROM])
+
         filter = Filter()
         filtered_df = filter.filter(dataframe, q.get('where'))
         grouped_df = _group_by(filtered_df, q.get('group_by'))
