@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.4.1 (2016-01-31)
+------------------
+* Provide the duration for which statistics were collected and statistics buffer size
+
 0.4.0 (2016-01-24)
 ------------------
 * Sub query support with new 'from' clause
