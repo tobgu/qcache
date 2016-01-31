@@ -2,6 +2,7 @@
 import os
 
 from invoke import task, run
+from qcache import __version__ as qcache_version
 
 docs_dir = 'docs'
 build_dir = os.path.join(docs_dir, '_build')
@@ -57,14 +58,15 @@ def publish(test=False):
 
 @task
 def build_image():
-    from qcache import __version__ as version
-    run("sudo docker build -t tobgu/qcache:{version} .".format(version=version))
-    run("sudo docker tag -f tobgu/qcache:{version} tobgu/qcache:latest".format(version=version))
+    run("sudo docker build -t tobgu/qcache:{version} .".format(version=qcache_version))
+    run("sudo docker tag -f tobgu/qcache:{version} tobgu/qcache:latest".format(version=qcache_version))
 
 @task
 def push_image():
-    from qcache import __version__ as version
-    run("sudo docker push tobgu/qcache:{version}".format(version=version))
+    run("sudo docker push tobgu/qcache:{version}".format(version=qcache_version))
     run("sudo docker push tobgu/qcache:latest")
 
-import sys, cgitb
+
+def tag():
+    run("git tag -fa v{version} -m 'v{version}'".format(version=qcache_version))
+
