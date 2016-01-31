@@ -131,7 +131,7 @@ def is_alias_assignment(expr):
     """
     Examples:
     ['=', 'column_name', 1]                                       Constant assignment
-    ['=', 'column_name', 'other_column']                         Basic aliasing
+    ['=', 'column_name', 'other_column']                          Basic aliasing
     ['=', 'column_name', ['sin', 'column_name']]
     ['=', 'column_name', ['+', 'column_name', 'other_column']]    Complex calculations
     """

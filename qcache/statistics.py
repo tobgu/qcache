@@ -1,5 +1,6 @@
 from collections import deque
 import json
+import time
 
 
 def encode_deque(obj):
@@ -26,8 +27,23 @@ class Statistics(object):
 
         self.stats[stat_name].append(value)
 
-    def reset(self):
-        self.stats = {}
+    def reset(self, timestamp=None):
+        if timestamp is None:
+            timestamp = time.time()
+        self.stats = {'since': timestamp,
+                      'statistics_buffer_size': self.buffer_size}
 
-    def to_json(self):
-        return json.dumps(self.stats, default=encode_deque)
+    def snapshot(self):
+        """
+        Create a statistics snapshot. This will reset the statistics.
+        """
+        snapshot = self.stats.copy()
+        timestamp = time.time()
+        snapshot['statistics_duration'] = timestamp - snapshot['since']
+        del snapshot['since']
+        self.reset()
+        return snapshot
+
+    def json_snapshot(self):
+        # Custom serialization required for deque
+        return json.dumps(self.snapshot(), default=encode_deque)

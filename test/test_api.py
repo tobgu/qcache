@@ -291,13 +291,16 @@ class TestCacheEvictionOnSize(SharedTest):
         assert stats['miss_count'] == 1
         assert stats['size_evict_count'] == 1
         assert stats['store_count'] == 2
+        assert stats['statistics_duration'] > 0.0
+        assert stats['statistics_buffer_size'] == 1000
         assert len(stats['store_durations']) == 2
         assert len(stats['store_row_counts']) == 2
         assert sum(stats['store_row_counts']) == 4
         assert len(stats['query_durations']) == 2
 
         # Check stats again, this time it should have been cleared
-        assert self.get_statistics() == {}
+        assert set(self.get_statistics().keys()) == \
+               {'statistics_duration', 'statistics_buffer_size'}
 
     def test_can_insert_more_entries_with_smaller_values(self):
         data = [{'some_longish_key': 'short'},

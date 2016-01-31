@@ -255,8 +255,7 @@ class StatisticsHandler(RequestHandler):
 
     def get(self):
         self.set_header("Content-Type", "application/json; charset=utf-8")
-        self.write(self.stats.to_json())
-        self.stats.reset()
+        self.write(self.stats.json_snapshot())
 
 
 def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000, basic_auth=None):
