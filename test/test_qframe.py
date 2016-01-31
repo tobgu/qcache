@@ -8,6 +8,7 @@ def query(df, q):
 
 ######################### Filtering ##########################
 
+
 @pytest.fixture
 def basic_frame():
     data = """
@@ -129,7 +130,7 @@ def test_select_distinct_with_columns(basic_frame):
 
 ################ Aggregation #####################
 
-#TODO: More tests and error handling
+# TODO: More tests and error handling
 
 def test_basic_sum_aggregation(basic_frame):
     expected = QFrame.from_csv("""
@@ -189,7 +190,9 @@ baz
     frame = basic_frame.query({'select': [['max', 'baz']]})
     assert frame.to_csv() == expected.to_csv()
 
+
 ############### Ordering ################
+
 
 def test_single_column_ascending_ordering(basic_frame):
     frame = basic_frame.query({'order_by': ['foo']})
@@ -208,6 +211,7 @@ def test_sort_on_unknown_column(basic_frame):
 
 ############## Slicing ##################
 
+
 def test_offset_and_limit(basic_frame):
     frame = basic_frame.query({"offset": 1, "limit": 1})
     assert_rows(frame, ['aaa'])
@@ -215,6 +219,7 @@ def test_offset_and_limit(basic_frame):
 
 
 ############## Unicode #################
+
 
 def test_unicode_content_from_csv():
     data = u"""foo,bar
@@ -229,7 +234,8 @@ ccc,"""
 
 
 def test_unicode_content_from_dicts():
-    data = [{'foo': 'aaa', 'bar': u'Iñtërnâtiônàližætiøn'}, {'foo': 'bbb', 'bar': u'räksmörgås'.encode(encoding='utf-8')}]
+    data = [{'foo': 'aaa', 'bar': u'Iñtërnâtiônàližætiøn'},
+            {'foo': 'bbb', 'bar': u'räksmörgås'.encode(encoding='utf-8')}]
     input_frame = QFrame.from_dicts(data)
     frame = input_frame.query({'where': ["==", "bar", u"'räksmörgås'"]})
 
@@ -246,6 +252,7 @@ def test_unicode_content_from_dicts():
 #   - Auto naming/aliasing
 # * Subselect with "from" containing another query
 # * User defined functions
+
 
 @pytest.fixture
 def calculation_frame():
@@ -387,7 +394,9 @@ def test_cannot_mix_aggregation_functions_and_columns_without_group_by(calculati
     with pytest.raises(MalformedQueryException):
         calculation_frame.query({"select": [["max", "bar"], "foo"]})
 
+
 ################# Sub queries ###################
+
 
 @pytest.fixture
 def subselect_frame():
@@ -405,8 +414,7 @@ def test_alias_aggregation_from_sub_select(subselect_frame):
                                                ["*", 100, ["/", "foo", "bar"]]]],
                                    "from":
                                        {"select": ["foo", ["sum", "bar"]],
-                                        "group_by": ["foo"]}
-    })
+                                        "group_by": ["foo"]}})
 
     assert frame.to_dicts() == [
         {"foo_pct": 4.0},
@@ -415,6 +423,7 @@ def test_alias_aggregation_from_sub_select(subselect_frame):
 
 
 #################  Update ######################
+
 
 def assert_column(column, frame, expected):
     assert [d[column] for d in frame.to_dicts()] == expected
@@ -487,6 +496,7 @@ def test_unknown_clause_in_query(basic_frame):
 # Refactor tests to check complete column not just the row that is supposed to be affected
 # Mix self referring updates and assignments in same update
 # Any way to merge the filter code for select and update (is the update version as performant as the where)?
+
 
 def xtest_update_with_conjunction(basic_frame):
     basic_frame.query({'update': [['bar', 2.0]],

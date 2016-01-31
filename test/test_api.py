@@ -2,7 +2,7 @@
 import json
 import os
 from tornado.httputil import url_concat
-from tornado.testing import AsyncHTTPTestCase, AsyncHTTPSTestCase
+from tornado.testing import AsyncHTTPTestCase
 from freezegun import freeze_time
 import qcache.app as app
 import csv
@@ -63,7 +63,6 @@ class SharedTest(AsyncHTTPTestCase):
 
 
 class TestBaseCases(SharedTest):
-
     def test_404_when_item_is_missing(self):
         url = url_concat('/dataset/abc', {'q': json.dumps('{}')})
         response = self.fetch(url)
@@ -96,7 +95,6 @@ class TestBaseCases(SharedTest):
 
 
 class TestQueryWithPost(SharedTest):
-
     def post_query_json(self, url, query):
         return self.fetch(url, headers={'Accept': 'application/json, text/csv', 'Content-Type': 'application/json'},
                           method="POST", body=to_json(query))
@@ -135,6 +133,7 @@ class TestQueryWithPost(SharedTest):
 
         response = self.query_json('/dataset/abc', query={})
         assert response.code == 200
+
 
 class TestSlicing(SharedTest):
     def test_unsliced_size_header_indicates_the_dataset_size_before_slicing_it(self):
@@ -189,7 +188,8 @@ class TestCharacterEncoding(SharedTest):
         assert response.code == 415
 
     def test_upload_invalid_charset(self):
-        response = self.fetch('/dataset/abc', method='POST', body='', headers={'Content-Type': 'text/csv; charset=iso-123'})
+        response = self.fetch('/dataset/abc', method='POST', body='',
+                              headers={'Content-Type': 'text/csv; charset=iso-123'})
         assert response.code == 415
 
 
@@ -251,9 +251,10 @@ class TestInvalidQueries(SharedTest):
         response = self.query_json('/dataset/abc', {'group_by': {'foo': 4.3}})
         assert 'Invalid format' in json.loads(response.body)['error']
 
+
 # Error cases:
 # - Malformed query
-#   * Still some edge cases left in projection and filter.
+# * Still some edge cases left in projection and filter.
 # - Malformed input data
 #   * No data sent in => error
 #   * Wrong format specified
@@ -483,5 +484,5 @@ class TestSSLServerWithSSLAndBasicAuth(SSLTestBase):
         response = self.fetch('/statistics', validate_cert=False, auth_username='foo', auth_password='bar')
         assert response.code == 200
 
-# Delete against a Q endpoint is a 404
-# Get against a Q endpoint is a 404
+        # Delete against a Q endpoint is a 404
+        # Get against a Q endpoint is a 404

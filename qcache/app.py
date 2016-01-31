@@ -21,6 +21,7 @@ class ResponseCode(object):
     NOT_ACCEPTABLE = 406
     UNSUPPORTED_MEDIA_TYPE = 415
 
+
 CONTENT_TYPE_JSON = 'application/json'
 CONTENT_TYPE_CSV = 'text/csv'
 ACCEPTED_TYPES = {CONTENT_TYPE_JSON, CONTENT_TYPE_CSV}  # text/*, */*?
@@ -43,6 +44,7 @@ def http_auth(handler_class):
     Basic auth decorator. Based on the decorator found here:
     https://simplapi.wordpress.com/2014/03/26/python-tornado-and-decorator/
     """
+
     def set_401(handler):
         handler.set_status(401)
         handler.set_header('WWW-Authenticate', 'Basic realm=Restricted')
@@ -219,7 +221,7 @@ class DatasetHandler(RequestHandler):
             # This is a waste of CPU cycles, first the JSON decoder decodes all strings
             # from UTF-8 then we immediately encode them back into UTF-8. Couldn't
             # find an easy solution to this though.
-            evict_count = self.dataset_cache.ensure_free(len(self.request.body)/2)
+            evict_count = self.dataset_cache.ensure_free(len(self.request.body) / 2)
             data = json.loads(self.request.body, cls=UTF8JSONDecoder)
             qf = QFrame.from_dicts(data)
 
@@ -258,42 +260,49 @@ class StatisticsHandler(RequestHandler):
         self.write(self.stats.json_snapshot())
 
 
-def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000, basic_auth=None):
+def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_age=0,
+             statistics_buffer_size=1000, basic_auth=None):
     if basic_auth:
         global auth_user, auth_password
         auth_user, auth_password = basic_auth.split(':', 2)
 
     stats = Statistics(buffer_size=statistics_buffer_size)
     return Application([
-        url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)/?(q)?".format(url_prefix=url_prefix),
-            DatasetHandler,
-            dict(dataset_cache=DatasetCache(max_size=max_cache_size, max_age=max_age),
-                 state=AppState(),
-                 stats=stats),
-            name="dataset"),
-        url(r"{url_prefix}/status".format(url_prefix=url_prefix), StatusHandler, {}, name="status"),
-        url(r"{url_prefix}/statistics".format(url_prefix=url_prefix), StatisticsHandler, dict(stats=stats), name="statistics")
-    ], debug=debug)
+                           url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)/?(q)?".format(url_prefix=url_prefix),
+                               DatasetHandler,
+                               dict(dataset_cache=DatasetCache(max_size=max_cache_size, max_age=max_age),
+                                    state=AppState(),
+                                    stats=stats),
+                               name="dataset"),
+                           url(r"{url_prefix}/status".format(url_prefix=url_prefix), StatusHandler, {}, name="status"),
+                           url(r"{url_prefix}/statistics".format(
+                               url_prefix=url_prefix), StatisticsHandler, dict(stats=stats), name="statistics")
+                       ], debug=debug)
 
 
-def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000, debug=False, certfile=None, basic_auth=None):
+def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000,
+        debug=False, certfile=None, basic_auth=None):
     if basic_auth and not certfile:
         print "SSL must be enbabled to use basic auth!"
         return
 
     print("Starting on port {port}, max cache size {max_cache_size} bytes, max age {max_age} seconds,"
           " statistics_buffer_size {statistics_buffer_size}, debug={debug}".format(
-        port=port, max_cache_size=max_cache_size, max_age=max_age, statistics_buffer_size=statistics_buffer_size, debug=debug))
+        port=port, max_cache_size=max_cache_size, max_age=max_age,
+        statistics_buffer_size=statistics_buffer_size, debug=debug))
 
     app = make_app(
-        debug=debug, max_cache_size=max_cache_size, max_age=max_age, statistics_buffer_size=statistics_buffer_size, basic_auth=basic_auth)
+        debug=debug, max_cache_size=max_cache_size, max_age=max_age,
+        statistics_buffer_size=statistics_buffer_size, basic_auth=basic_auth)
 
     args = {}
     if certfile:
-        args['ssl_options'] = {'certfile': certfile, 'ciphers': 'ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+3DES:!aNULL:!MD5:!DSS'}
+        args['ssl_options'] = {'certfile': certfile,
+                               'ciphers': 'ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+3DES:!aNULL:!MD5:!DSS'}  # noqa
 
     app.listen(port, max_buffer_size=max_cache_size, **args)
     IOLoop.current().start()
+
 
 if __name__ == "__main__":
     run()

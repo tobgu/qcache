@@ -21,6 +21,11 @@ def coverage():
 
 
 @task
+def flake8():
+    run("flake8 qcache test")
+
+
+@task
 def clean():
     run("rm -rf build")
     run("rm -rf dist")
@@ -28,13 +33,16 @@ def clean():
     clean_docs()
     print("Cleaned up.")
 
+
 @task
 def clean_docs():
     run("rm -rf %s" % build_dir)
 
+
 @task
 def browse_docs():
     run("open %s" % os.path.join(build_dir, 'index.html'))
+
 
 @task
 def build_docs(clean=False, browse=False):
@@ -44,9 +52,11 @@ def build_docs(clean=False, browse=False):
     if browse:
         browse_docs()
 
+
 @task
 def readme(browse=False):
     run('rst2html.py README.rst > README.html')
+
 
 @task
 def publish(test=False):
@@ -56,10 +66,12 @@ def publish(test=False):
     else:
         run("python setup.py register sdist upload")
 
+
 @task
 def build_image():
     run("sudo docker build -t tobgu/qcache:{version} .".format(version=qcache_version))
     run("sudo docker tag -f tobgu/qcache:{version} tobgu/qcache:latest".format(version=qcache_version))
+
 
 @task
 def push_image():

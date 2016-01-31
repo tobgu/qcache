@@ -2,3 +2,4 @@ pytest
 invoke
 freezegun
 pytest-cov
+flake8

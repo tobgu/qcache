@@ -3,7 +3,8 @@
 '''QCache
 
 Usage:
-  qcache  [-hd] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE] [--statistics-buffer-size=BUFFER_SIZE] [--cert-file=PATH_TO_CERT] [--basic-auth=<USER>:<PASSWORD>]
+  qcache [-hd] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE] [--statistics-buffer-size=BUFFER_SIZE]
+         [--cert-file=PATH_TO_CERT] [--basic-auth=<USER>:<PASSWORD>]
 
 Options:
   -h --help                     Show this screen

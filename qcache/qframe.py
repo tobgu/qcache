@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import re
+import operator
 from StringIO import StringIO
 from pandas import DataFrame, pandas
 from pandas.computation.ops import UndefinedVariableError
@@ -52,7 +53,7 @@ class Filter(object):
             try:
                 # The filter string may contain references to variables in env.
                 # That's why it is defined here.
-                env = self.env
+                env = self.env  # noqa
                 return dataframe.query(filter_str)
             except SyntaxError:
                 raise_malformed('Syntax error in where clause', filter_q)
@@ -325,12 +326,12 @@ def _query(dataframe, q):
 def quoted(string):
     l = len(string)
     return (l >= 2) and \
-           ((string[0] == "'" and string[l - 1] == "'") or \
+           ((string[0] == "'" and string[l - 1] == "'") or
             (string[0] == '"' and string[l - 1] == '"'))
 
 
 def unquote(s):
-    return s[1:len(s)-1]
+    return s[1:len(s) - 1]
 
 
 def _prepare_arg(df, arg):
@@ -342,7 +343,6 @@ def _prepare_arg(df, arg):
 
     return arg
 
-import operator
 COMPARISON_OPERATORS = {'==': operator.eq,
                         '!=': operator.ne,
                         '<': operator.lt,
@@ -417,18 +417,30 @@ def classify_updates(q):
 
 def apply_operation(df, update_filter, column, op, value):
     # This is repetitive and ugly but the only way I've found to do in place updates
-    if op == '+':    df.ix[update_filter, column] += value
-    elif op == '-':  df.ix[update_filter, column] -= value
-    elif op == '*':  df.ix[update_filter, column] *= value
-    elif op == '/':  df.ix[update_filter, column] /= value
-    elif op == '<<': df.ix[update_filter, column] <<= value
-    elif op == '>>': df.ix[update_filter, column] >>= value
-    elif op == '&':  df.ix[update_filter, column] &= value
-    elif op == '|':  df.ix[update_filter, column] |= value
-    elif op == '^':  df.ix[update_filter, column] ^= value
-    elif op == '%':  df.ix[update_filter, column] %= value
-    elif op == '**': df.ix[update_filter, column] **= value
-    else: raise_malformed('Invalid update operator', (op, value, column))
+    if op == '+':
+        df.ix[update_filter, column] += value
+    elif op == '-':
+        df.ix[update_filter, column] -= value
+    elif op == '*':
+        df.ix[update_filter, column] *= value
+    elif op == '/':
+        df.ix[update_filter, column] /= value
+    elif op == '<<':
+        df.ix[update_filter, column] <<= value
+    elif op == '>>':
+        df.ix[update_filter, column] >>= value
+    elif op == '&':
+        df.ix[update_filter, column] &= value
+    elif op == '|':
+        df.ix[update_filter, column] |= value
+    elif op == '^':
+        df.ix[update_filter, column] ^= value
+    elif op == '%':
+        df.ix[update_filter, column] %= value
+    elif op == '**':
+        df.ix[update_filter, column] **= value
+    else:
+        raise_malformed('Invalid update operator', (op, value, column))
 
 
 def _update(df, q):
