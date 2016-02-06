@@ -110,15 +110,13 @@ def test_empty_filter_clause_not_allowed(basic_frame):
         basic_frame.query({'where': ["|", []]})
 
 
-@pytest.mark.parametrize("operation", [("!",), ("isnull",)])
+@pytest.mark.parametrize("operation", ["!", "isnull"])
 def test_single_argument_operators_require_single_argument(basic_frame, operation):
     with pytest.raises(MalformedQueryException):
         basic_frame.query({'where': [operation, 'foo', 'bar']})
 
 
-@pytest.mark.parametrize("operation", [
-    ("<",), (">",), (">",), ("<=",), ("<=",), (">=",), (">=",), ("==",), ("!=",), ("in",)
-])
+@pytest.mark.parametrize("operation", ["<", ">", ">", "<=", "<=", ">=", ">=", "==", "!=", "in"])
 def test_double_argument_operators_require_single_argument(basic_frame, operation):
     with pytest.raises(MalformedQueryException):
         basic_frame.query({'where': [operation, 'foo']})
@@ -127,7 +125,7 @@ def test_double_argument_operators_require_single_argument(basic_frame, operatio
         basic_frame.query({'where': [operation, 'foo', 'bar', 'baz']})
 
 
-@pytest.mark.parametrize("operation", [("&",), ("|",)])
+@pytest.mark.parametrize("operation", ["&", "|"])
 def test_and_or_requires_at_least_one_argument(basic_frame, operation):
     with pytest.raises(MalformedQueryException):
         basic_frame.query({'where': [operation]})
