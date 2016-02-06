@@ -268,18 +268,6 @@ def test_unicode_content_from_dicts():
 
     assert_rows(frame, ['bbb'])
 
-# * Error message when columns are not in frame. Specify which columns that are missing.
-# * Column aliasing
-#   - Column
-#   - Constant
-# * Derived/calculated functions
-#   - Based on two or more columns
-#   - Based on one column and one constant
-#   - Based only on constants
-#   - Auto naming/aliasing
-# * Subselect with "from" containing another query
-# * User defined functions
-
 
 @pytest.fixture
 def calculation_frame():

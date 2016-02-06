@@ -44,7 +44,7 @@ interface with some home grown filter language.
 ********
 Features
 ********
-- Simple, single process, server.
+- Simple, single process, single process, server.
 - Expressive JSON-based query language with format and features similar to SQL SELECT. Queries
   are data that can easily be transformed or enriched.
 - Support for JSON or CSV input and output format
@@ -106,10 +106,17 @@ Query examples
 Below are examples of the major features of the query language. A JSON object is used to
 describe the query. The query should be URL encoded and passed in using the 'q' GET-parameter.
 
+The query language uses LISP-style prefix notation for simplicity. This makes it easy
+to parse and build queries dynamically since no rules for operator precedence
+ever need to be applied.
+
 Like so:
-```
-http://localhost:8888/qcache/datasets/<dataset_key>?q=<URL-encoded-query>
-```
+`http://localhost:8888/qcache/datasets/<dataset_key>?q=<URL-encoded-query>`
+
+You can also POST queries as JSON against:
+`http://localhost:8888/qcache/datasets/<dataset_key>/q/`
+
+This is a good alternative to GET if your queries are too large to fit in the query string.
 
 Select all
 ==========
@@ -127,11 +134,29 @@ Projection
 
 Not specifying select is equivalent to SELECT * in SQL
 
+Column aliasing
+---------------
+.. code:: python
+
+   {"select": [["=", "foo", "bar"]]}
+
+This will rename column bar to foo in the result.
+
+You can also make more elaborate calculations in the aliasing expression.
+
+.. code:: python
+
+   {"select": [["=", "baz", ["+", ["*", "bar", 2], "foo"]]]
+
+As well as simple constant assignments.
+
+.. code:: python
+
+   {"select": [["=", "baz", 55]]}
+
+
 Filtering
 =========
-Filtering is done using Lisp style prefix notation for the comparison operators. This
-makes it simple to parse and build queries dynamically since no rules for operator precedence
-ever need to be applied.
 
 Comparison
 ----------
@@ -161,7 +186,8 @@ Clauses
 
 The following operators are supported:
 
-.. code
+.. code::
+
    &, |
 
 
@@ -200,7 +226,7 @@ Great for pagination of long results!
 
 Limit
 =====
-Great for paging long results!
+Great for pagination of long results!
 
 .. code:: python
 
@@ -232,6 +258,17 @@ Distinct has its own query clause unlike in SQL.
 
    {"select": ["foo", "bar"],
     "distinct": ["foo"]}
+
+
+Sub selects
+===========
+Filter, transform and select your data in multiple steps.
+
+.. code:: python
+
+    {"select": [["=", "foo_pct", ["*", 100, ["/", "foo", "bar"]]]],
+     "from": {"select": ["foo", ["sum", "bar"]],
+              "group_by": ["foo"]}}
 
 
 All together now!
@@ -345,6 +382,9 @@ These may or may not be realized, it's far from sure that all of the ideas are g
 * Investigate type hints for pandas categorials on enum-like values to improve storage
   layout and filter speed.
 * Support math functions as part of the where clause (see pandas expr.py/ops.py)
+* Some kind of light weight joining? Could create dataset groups that all are allocated to
+  the same cache. Sub queries could then be used to query datasets based on data selected
+  from other datasets in the same dataset group.
 
 ************
 Contributing
