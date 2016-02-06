@@ -75,7 +75,7 @@ class Filter(object):
             result = "not " + self._build_filter(q[1])
         elif op == "isnull":
             if len(q) != 2:
-                raise_malformed("! is a single arity operator, invalid number of arguments", q)
+                raise_malformed("isnull is a single arity operator, invalid number of arguments", q)
 
             # Slightly hacky but the only way I've come up with so far.
             result = "({arg} != {arg})".format(arg=q[1])

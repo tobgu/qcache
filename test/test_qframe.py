@@ -101,8 +101,37 @@ def test_invalid_column_name(basic_frame):
         basic_frame.query({'where': ["==", "<foo:3>", 3]})
 
 
-# UndefinedVariableError, happens when row is referred that does not exist
-# Error cases
+def test_empty_filter_returns_same_frame(basic_frame):
+    assert basic_frame.query({'where': []}).df.equals(basic_frame.df)
+
+
+def test_empty_filter_clause_not_allowed(basic_frame):
+    with pytest.raises(MalformedQueryException):
+        basic_frame.query({'where': ["|", []]})
+
+
+@pytest.mark.parametrize("operation", [("!",), ("isnull",)])
+def test_single_argument_operators_require_single_argument(basic_frame, operation):
+    with pytest.raises(MalformedQueryException):
+        basic_frame.query({'where': [operation, 'foo', 'bar']})
+
+
+@pytest.mark.parametrize("operation", [
+    ("<",), (">",), (">",), ("<=",), ("<=",), (">=",), (">=",), ("==",), ("!=",), ("in",)
+])
+def test_double_argument_operators_require_single_argument(basic_frame, operation):
+    with pytest.raises(MalformedQueryException):
+        basic_frame.query({'where': [operation, 'foo']})
+
+    with pytest.raises(MalformedQueryException):
+        basic_frame.query({'where': [operation, 'foo', 'bar', 'baz']})
+
+
+@pytest.mark.parametrize("operation", [("&",), ("|",)])
+def test_and_or_requires_at_least_one_argument(basic_frame, operation):
+    with pytest.raises(MalformedQueryException):
+        basic_frame.query({'where': [operation]})
+
 
 ############### Projections #######################
 
@@ -442,6 +471,12 @@ def test_basic_update_function_based_on_current_value_of_column(basic_frame):
                        'where': ['==', 'foo', '"bbb"']})
 
     assert basic_frame.to_dicts()[0]['bar'] == 3.25
+
+
+def test_unknown_update_function(basic_frame):
+    with pytest.raises(MalformedQueryException):
+        basic_frame.query({'update': [['_', 'bar', 2.0]],
+                           'where': ['==', 'foo', '"bbb"']})
 
 
 def test_update_is_null(basic_frame):
