@@ -4,7 +4,17 @@
 # to build the needed librarires for qcache.
 apt-get update
 apt-get -y install python-dev python-pip
-pip install numpy==1.10.1
+apt-get -y install wget
+
+# Build and install modified numpy that can handle larger queries
+wget https://pypi.python.org/packages/source/n/numpy/numpy-1.10.1.tar.gz
+tar xvzf numpy-1.10.1.tar.gz
+cd numpy-1.10.1
+sed -i '/#define NPY_MAXARGS 32/c\#define NPY_MAXARGS 256' numpy/core/include/numpy/ndarraytypes.h
+python setup.py build install
+cd ..
+rm -rf numpy*
+
 pip install pandas==0.17.0
 pip install numexpr==2.4.4
 pip install tornado==4.2.1
