@@ -55,8 +55,8 @@ Features
   through HTTP API
 - Scales linearly in query capacity with the number of servers. A python client library that
   uses consistent hashing for key distribution among servers is available
-  here QCache-client_. There's also a Go client under development under development here
-  Go-QCache-client_. More clients are welcome!
+  here QCache-client_. There's also a Go client under development here Go-QCache-client_.
+  More clients are welcome!
 
 
 ************
