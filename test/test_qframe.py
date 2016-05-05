@@ -1,8 +1,11 @@
 # coding=utf-8
 import json
+from contextlib import contextmanager
 
 import msgpack
 import pytest
+import time
+
 from qcache.qframe import MalformedQueryException, QFrame
 
 
@@ -545,6 +548,67 @@ def test_unknown_clause_in_query(basic_frame):
         print e.message
         assert 'foo' in e.message
 
+
+################### Performance ####################
+
+
+@pytest.fixture
+def large_frame():
+    d = 1000000 * [{'aaa': 123456789, 'bbb': 'abcdefghijklmnopqrvwxyz', 'ccc': 1.23456789}]
+    return QFrame.from_dicts(d)
+
+
+@contextmanager
+def timeit(name):
+    t0 = time.time()
+    yield
+    print('\n{name} duration: {duration} s'.format(name=name, duration=time.time()-t0))
+
+
+@pytest.mark.benchmark
+def test_large_frame_csv(large_frame):
+    with timeit('to_csv'):
+        csv_string = large_frame.to_csv()
+
+    with timeit('from_csv'):
+        QFrame.from_csv(csv_string)
+
+    # Results:
+    # to_csv duration: 2.43983101845 s
+    # from_csv duration: 0.532874107361 s
+
+
+@pytest.mark.benchmark
+def test_large_frame_json(large_frame):
+    with timeit('to_json'):
+        json_string = large_frame.to_json()
+
+    with timeit('from_json'):
+        QFrame.from_json(json_string)
+
+    # to_json duration: 0.792788982391 s
+    # from_json duration: 3.07192707062 s
+
+
+@pytest.mark.benchmark
+@pytest.mark.skipif(True, reason="No implementation")
+def test_large_frame_msgpack(large_frame):
+    # NOTE: This implementation does not exist but once did as an experiment
+    #       This test is left as reference and reminder
+    with timeit('to_msgpack'):
+        msgpack_string = large_frame.to_msgpack()
+
+    with timeit('from_msgpack'):
+        QFrame.from_msgpack(msgpack_string)
+
+    # These numbers explain why there is no msgpack implementation
+    # to_msgpack duration: 7.02977800369 s
+    # from_msgpack duration: 1.52387404442 s
+
+    # It's not because msgpack is slow (it's fast), it's because the
+    # code has to first create a list of python dicts and then serialize
+    # that using msgpack rather than serializing the dataframe to msgpack
+    # directly.
 
 # Not
 # Disjunction and conjunction

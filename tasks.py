@@ -10,7 +10,12 @@ build_dir = os.path.join(docs_dir, '_build')
 
 @task
 def test():
-    run('python -m py.test -s -v', pty=True)
+    run('python -m py.test -s -v -m "not benchmark"', pty=True)
+
+
+@task
+def benchmark():
+    run('python -m py.test -s -v -m "benchmark"', pty=True)
 
 
 @task
