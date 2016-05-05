@@ -5,7 +5,7 @@ from StringIO import StringIO
 from pandas import DataFrame, pandas
 from pandas.computation.ops import UndefinedVariableError
 from pandas.core.groupby import DataFrameGroupBy
-import msgpack
+
 
 CLAUSE_WHERE = 'where'
 CLAUSE_GROUP_BY = 'group_by'
@@ -469,16 +469,9 @@ class QFrame(object):
         return QFrame(pandas.read_csv(StringIO(csv_string), dtype=column_types))
 
     @staticmethod
-    def from_json(json_string):
-        return QFrame(pandas.read_json(path_or_buf=json_string, orient='records'))
-
-    @staticmethod
     def from_dicts(d):
-        return QFrame(DataFrame.from_records(d))
-
-    @staticmethod
-    def from_msgpack(msgpack_string):
-        return QFrame.from_dicts(msgpack.loads(msgpack_string))
+        f = QFrame(DataFrame.from_records(d))
+        return f
 
     def query(self, q):
         if 'update' in q:
@@ -497,9 +490,6 @@ class QFrame(object):
 
     def to_dicts(self):
         return self.df.to_dict(orient='records')
-
-    def to_msgpack(self):
-        return msgpack.packb(self.to_dicts())
 
     @property
     def columns(self):

@@ -11,7 +11,6 @@ REQUIRES = [
     'numpy==1.10.1',
     'pandas==0.17.0',
     'tornado==4.2.1',
-    'msgpack-python==0.4.7'
 ]
 
 

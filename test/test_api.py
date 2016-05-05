@@ -1,8 +1,6 @@
 # coding=utf-8
 import json
 import os
-
-import msgpack
 from tornado.httputil import url_concat
 from tornado.testing import AsyncHTTPTestCase
 from freezegun import freeze_time
@@ -13,10 +11,6 @@ from StringIO import StringIO
 
 def to_json(data):
     return json.dumps(data)
-
-
-def to_msgpack(data):
-    return msgpack.dumps(data, use_bin_type=True)
 
 
 def to_csv(data):
@@ -62,14 +56,6 @@ class SharedTest(AsyncHTTPTestCase):
         url = url_concat(url, {'q': json.dumps(query)})
         return self.fetch(url, headers={'Accept': 'text/csv, application/json'})
 
-    def post_msgpack(self, url, data):
-        body = to_msgpack(data)
-        return self.fetch(url, method='POST', body=body, headers={'Content-Type': 'application/msgpack'})
-
-    def query_msgpack(self, url, query):
-        url = url_concat(url, {'q': json.dumps(query)})
-        return self.fetch(url, headers={'Accept': 'application/msgpack, text/csv'})
-
     def get_statistics(self):
         response = self.fetch('/statistics')
         assert response.code == 200
@@ -97,15 +83,6 @@ class TestBaseCases(SharedTest):
         response = self.query_csv('/dataset/cba', {'where': ['==', 'baz', 1]})
         assert response.code == 200
         assert from_csv(response.body) == [{'baz': '1', 'bar': '10'}]  # NB: Strings for numbers here
-
-    def test_upload_msgpack_query_msgpack(self):
-        response = self.post_msgpack('/dataset/abc', [{'foo': 1, 'bar': 10}, {'foo': 2, 'bar': 20}])
-        assert response.code == 201
-
-        response = self.query_msgpack('/dataset/abc', {'where': ['==', 'foo', 1]})
-
-        assert response.code == 200, response.body
-        assert msgpack.loads(response.body) == [{'foo': 1, 'bar': 10}]
 
     def test_division_by_zero(self):
         response = self.post_json('/dataset/abc', [{'foo': 1, 'bar': 0}])
@@ -204,17 +181,6 @@ class TestCharacterEncoding(SharedTest):
         assert response.code == 200
         response_data = json.loads(response.body)
         assert json.loads(response.body) == [{'foo': u'Iñtërnâtiônàližætiønåäö'}]
-        assert type(response_data[0]['foo']) is unicode
-
-    def test_upload_msgpack_query_json_unicode_characters(self):
-        response = self.post_msgpack('/dataset/abc', [{'foo': u'Iñtërnâtiônàližætiøn'}, {'foo': 'qux'}])
-        assert response.code == 201
-
-        response = self.query_msgpack('/dataset/abc', {'where': ['==', 'foo', u'"Iñtërnâtiônàližætiøn"']})
-
-        assert response.code == 200
-        response_data = msgpack.loads(response.body, encoding='utf-8')
-        assert response_data == [{'foo': u'Iñtërnâtiônàližætiøn'}]
         assert type(response_data[0]['foo']) is unicode
 
     def test_upload_invalid_content_type(self):
