@@ -24,7 +24,8 @@ class ResponseCode(object):
 
 CONTENT_TYPE_JSON = 'application/json'
 CONTENT_TYPE_CSV = 'text/csv'
-ACCEPTED_TYPES = {CONTENT_TYPE_JSON, CONTENT_TYPE_CSV}  # text/*, */*?
+CONTENT_TYPE_MSGPACK = 'application/msgpack'
+ACCEPTED_TYPES = {CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_MSGPACK}  # text/*, */*?
 CHARSET_REGEX = re.compile('charset=([A-Za-z0-9_-]+)')
 
 auth_user = None
@@ -167,6 +168,8 @@ class DatasetHandler(RequestHandler):
         self.set_header("X-QCache-unsliced-length", result_frame.unsliced_df_len)
         if accept_type == CONTENT_TYPE_CSV:
             self.write(result_frame.to_csv())
+        elif accept_type == CONTENT_TYPE_MSGPACK:
+            self.write(result_frame.to_msgpack())
         else:
             self.write(result_frame.to_json())
 
@@ -217,6 +220,9 @@ class DatasetHandler(RequestHandler):
         if content_type == CONTENT_TYPE_CSV:
             evict_count = self.dataset_cache.ensure_free(len(self.request.body))
             qf = QFrame.from_csv(self.request.body, column_types=self.dtypes())
+        elif content_type == CONTENT_TYPE_MSGPACK:
+            evict_count = self.dataset_cache.ensure_free(len(self.request.body))
+            qf = QFrame.from_msgpack(self.request.body)
         else:
             # This is a waste of CPU cycles, first the JSON decoder decodes all strings
             # from UTF-8 then we immediately encode them back into UTF-8. Couldn't

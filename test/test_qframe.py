@@ -1,4 +1,7 @@
 # coding=utf-8
+import json
+
+import msgpack
 import pytest
 from qcache.qframe import MalformedQueryException, QFrame
 
@@ -409,6 +412,37 @@ def test_cannot_mix_aggregation_functions_and_columns_without_group_by(calculati
     with pytest.raises(MalformedQueryException):
         calculation_frame.query({"select": [["max", "bar"], "foo"]})
 
+
+################# Msgpack #######################
+
+def test_to_from_msgpack():
+    data = [{'a': 1.5, 'b': 2.0}, {'a': 1.0, 'b': 3.0}]
+    frame = QFrame.from_msgpack(msgpack.packb(data))
+    msgpack_string = frame.to_msgpack()
+    assert data == msgpack.unpackb(msgpack_string)
+
+
+def test_to_from_msgpack_unicode():
+    data = [{u'a': u'Iñtërnâtiônàližætiøn', u'b': u'räksmörgås'}]
+    frame = QFrame.from_msgpack(msgpack.dumps(data, use_bin_type=True))
+    msgpack_string = frame.to_msgpack()
+    assert data == msgpack.loads(msgpack_string, encoding='utf-8')
+
+
+################# JSON #######################
+
+def test_to_from_json():
+    data = [{'a': 1.5, 'b': 2.0}, {'a': 1.0, 'b': 3.0}]
+    frame = QFrame.from_json(json.dumps(data))
+    json_string = frame.to_json()
+    assert data == json.loads(json_string)
+
+
+def test_to_from_json_unicode():
+    data = [{u'a': u'Iñtërnâtiônàližætiøn', u'b': u'räksmörgås'}]
+    frame = QFrame.from_json(json.dumps(data))
+    json_string = frame.to_json()
+    assert data == json.loads(json_string)
 
 ################# Sub queries ###################
 
