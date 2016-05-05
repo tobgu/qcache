@@ -547,13 +547,13 @@ def test_large_frame_csv(large_frame):
 @pytest.mark.benchmark
 def test_large_frame_json(large_frame):
     with timeit('to_json'):
-        json_string = large_frame.to_json()
+        large_frame.to_json()
 
-    with timeit('from_json'):
-        QFrame.from_json(json_string)
+    # with timeit('from_json'):
+    #    QFrame.from_json(json_string)
 
     # to_json duration: 0.792788982391 s
-    # from_json duration: 3.07192707062 s
+    # from_json duration: 3.07192707062 s, This implementation no longer exists
 
 
 @pytest.mark.benchmark
