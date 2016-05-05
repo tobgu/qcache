@@ -215,22 +215,23 @@ class DatasetHandler(RequestHandler):
 
         content_type = self.content_type()
         if content_type == CONTENT_TYPE_CSV:
-            evict_count = self.dataset_cache.ensure_free(len(self.request.body))
+            durations_until_eviction = self.dataset_cache.ensure_free(len(self.request.body))
             qf = QFrame.from_csv(self.request.body, column_types=self.dtypes())
         else:
             # This is a waste of CPU cycles, first the JSON decoder decodes all strings
             # from UTF-8 then we immediately encode them back into UTF-8. Couldn't
             # find an easy solution to this though.
-            evict_count = self.dataset_cache.ensure_free(len(self.request.body) / 2)
+            durations_until_eviction = self.dataset_cache.ensure_free(len(self.request.body) / 2)
             data = json.loads(self.request.body, cls=UTF8JSONDecoder)
             qf = QFrame.from_dicts(data)
 
         self.dataset_cache[dataset_key] = qf
         self.set_status(ResponseCode.CREATED)
-        self.stats.inc('size_evict_count', count=evict_count)
+        self.stats.inc('size_evict_count', count=len(durations_until_eviction))
         self.stats.inc('store_count')
         self.stats.append('store_row_counts', len(qf))
         self.stats.append('store_durations', time.time() - t0)
+        self.stats.extend('durations_until_eviction', durations_until_eviction)
         self.write("")
 
     def delete(self, dataset_key, optional_q):

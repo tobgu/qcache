@@ -27,6 +27,12 @@ class Statistics(object):
 
         self.stats[stat_name].append(value)
 
+    def extend(self, stat_name, values):
+        if stat_name not in self.stats:
+            self.stats[stat_name] = deque(maxlen=self.buffer_size)
+
+        self.stats[stat_name].extend(values)
+
     def reset(self, timestamp=None):
         if timestamp is None:
             timestamp = time.time()

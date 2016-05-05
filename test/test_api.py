@@ -298,6 +298,8 @@ class TestCacheEvictionOnSize(SharedTest):
         assert len(stats['store_row_counts']) == 2
         assert sum(stats['store_row_counts']) == 4
         assert len(stats['query_durations']) == 2
+        assert len(stats['durations_until_eviction']) == 1
+        assert stats['durations_until_eviction'][0] > 0.0
 
         # Check stats again, this time it should have been cleared
         assert set(self.get_statistics().keys()) == \
