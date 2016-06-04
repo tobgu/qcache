@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.4.2 (2016-06-04)
+------------------
+* Additional statistics to measure for how long data remains in the cache before it's evicted.
+* Bump dependency versions of Pandas, Numexpr and Tornado.
+
 0.4.1 (2016-01-31)
 ------------------
 * Provide the duration for which statistics were collected and statistics buffer size
