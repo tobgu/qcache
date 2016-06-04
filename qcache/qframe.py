@@ -190,9 +190,7 @@ def _build_eval_expression(expr):
 
 
 def _alias(dataframe, expressions):
-    # Aliasing is done in place, avoid overwriting original dataframe
-    dataframe = dataframe.copy()
-
+    result_frame = dataframe
     for expression in expressions:
         destination, source = expression[1], expression[2]
         if not isinstance(destination, basestring):
@@ -203,11 +201,11 @@ def _alias(dataframe, expressions):
 
         eval_expr = _build_eval_expression(source)
         try:
-            dataframe.eval('{destination} = {expr}'.format(destination=destination, expr=eval_expr))
+            result_frame = result_frame.eval('{destination} = {expr}'.format(destination=destination, expr=eval_expr), inplace=False)
         except (SyntaxError, ValueError):
             raise_malformed('Unknown function in alias', source)
 
-    return dataframe
+    return result_frame
 
 
 def classify_expressions(project_q):

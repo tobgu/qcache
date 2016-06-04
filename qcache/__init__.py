@@ -33,13 +33,16 @@ def main():
     args = docopt(__doc__, version=__version__)
 
     # Should be possible to solve this without casting to int...
-    run(port=int(args['--port']),
-        max_cache_size=int(args['--size']),
-        max_age=int(args['--age']),
-        statistics_buffer_size=int(args['--statistics-buffer-size']),
-        debug=args['--debug'],
-        certfile=args['--cert-file'],
-        basic_auth=args['--basic-auth'])
+    if '--version' in args:
+        print __version__
+    else:
+        run(port=int(args['--port']),
+            max_cache_size=int(args['--size']),
+            max_age=int(args['--age']),
+            statistics_buffer_size=int(args['--statistics-buffer-size']),
+            debug=args['--debug'],
+            certfile=args['--cert-file'],
+            basic_auth=args['--basic-auth'])
 
 if __name__ == '__main__':
     main()
