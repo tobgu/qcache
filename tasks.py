@@ -84,6 +84,6 @@ def push_image():
     run("sudo docker push tobgu/qcache:latest")
 
 
+@task
 def tag():
     run("git tag -fa v{version} -m 'v{version}'".format(version=qcache_version))
-
