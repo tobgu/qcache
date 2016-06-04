@@ -1,8 +1,9 @@
 FROM alpine:3.3
 
 COPY prepare_docker_image_alpine.sh .
+COPY musl_patch .
 RUN ./prepare_docker_image_alpine.sh
-RUN pip install qcache==0.4.1
+RUN pip install qcache==0.4.2
 
 EXPOSE 9401 9402 9403 9404 9405 9406 9407 9408
 ENV QCACHE_PORT 9401

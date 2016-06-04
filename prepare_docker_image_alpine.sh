@@ -9,19 +9,18 @@ cd numpy-1.10.1
 sed -i '/#define NPY_MAXARGS 32/c\#define NPY_MAXARGS 256' numpy/core/include/numpy/ndarraytypes.h
 
 # Need to apply a small patch for numpy to build with musl
-wget https://cgit.gentoo.org/proj/musl.git/snapshot/musl-bd611864247f545397823f2b566f1361148bb2fd.tar.gz
-tar xvzf musl-bd611864247f545397823f2b566f1361148bb2fd.tar.gz musl-bd611864247f545397823f2b566f1361148bb2fd/dev-python/numpy/files/numpy-1.10.1-musl-fix.patch
-patch -p1 < musl-bd611864247f545397823f2b566f1361148bb2fd/dev-python/numpy/files/numpy-1.10.1-musl-fix.patch
+patch -p1 < ../musl-bd611864247f545397823f2b566f1361148bb2fd/dev-python/numpy/files/numpy-1.10.1-musl-fix.patch
 
 # Build, install, remove
 python setup.py build install
 cd ..
 rm -rf numpy*
+rm -rf musl-*
 
 # Other pre-reqs
-pip install pandas==0.17.0
-pip install numexpr==2.4.4
-pip install tornado==4.2.1
+pip install pandas==0.18.1
+pip install numexpr==2.6.0
+pip install tornado==4.3.0
 pip install docopt==0.6.2
 pip install six
 
