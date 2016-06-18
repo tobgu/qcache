@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 import re
 import operator
 from StringIO import StringIO
+
+import numpy
 from pandas import DataFrame, pandas
 from pandas.computation.ops import UndefinedVariableError
 from pandas.core.groupby import DataFrameGroupBy
@@ -452,6 +454,39 @@ def _update(df, q):
             apply_operation(df, update_filter, column, op, value)
 
 
+def _get_dtype(obj):
+    try:
+        float(obj)
+        return None    # Numpy figures this out automatically
+    except ValueError:
+        return numpy.object
+
+
+def _strip_quotes(stand_in):
+    if stand_in.startswith("'") or stand_in.startswith('"'):
+        stand_in = stand_in[1:]
+
+    if stand_in.endswith("'") or stand_in.endswith('"'):
+        stand_in = stand_in[:-1]
+
+    return stand_in
+
+
+def _add_stand_in_columns(df, stand_in_columns):
+    if not stand_in_columns:
+        return df
+
+    for column_name, stand_in_value in stand_in_columns:
+        if column_name not in df:
+            if stand_in_value in df:
+                df.loc[:, column_name] = df[stand_in_value]
+            else:
+                dtype = _get_dtype(stand_in_value)
+                stand_in_value = _strip_quotes(stand_in_value)
+                arr = numpy.full(len(df), stand_in_value, dtype=dtype)
+                df.loc[:, column_name] = pandas.Series(arr, index=df.index)
+
+
 class QFrame(object):
     """
     Thin wrapper around a Pandas dataframe.
@@ -463,13 +498,16 @@ class QFrame(object):
         self.df = pandas_df
 
     @staticmethod
-    def from_csv(csv_string, column_types=None):
-        return QFrame(pandas.read_csv(StringIO(csv_string), dtype=column_types))
+    def from_csv(csv_string, column_types=None, stand_in_columns=None):
+        df = pandas.read_csv(StringIO(csv_string), dtype=column_types)
+        _add_stand_in_columns(df, stand_in_columns)
+        return QFrame(df)
 
     @staticmethod
-    def from_dicts(d):
-        f = QFrame(DataFrame.from_records(d))
-        return f
+    def from_dicts(d, stand_in_columns=None):
+        df = DataFrame.from_records(d)
+        _add_stand_in_columns(df, stand_in_columns=stand_in_columns)
+        return QFrame(df)
 
     def query(self, q):
         if 'update' in q:

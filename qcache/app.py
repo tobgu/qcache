@@ -126,14 +126,24 @@ class DatasetHandler(RequestHandler):
 
         return content_type
 
+    def header_to_key_values(self, header_name):
+        header_value = self.request.headers.get(header_name, None)
+        if not header_value:
+            return None
+
+        key_values = []
+        for key_value in header_value.split(';'):
+            key_values.append(tuple(s.strip() for s in key_value.split('=')))
+
+        return key_values
+
     def dtypes(self):
-        types = self.request.headers.get('X-QCache-types', None)
+        types = self.header_to_key_values('X-QCache-types')
         if not types:
             return None
 
         dtypes = {}
-        for type_spec in types.split(';'):
-            column_name, type_name = [s.strip() for s in type_spec.split('=')]
+        for column_name, type_name in types:
             if type_name == 'string':
                 dtypes[column_name] = 'object'
             else:
@@ -142,6 +152,9 @@ class DatasetHandler(RequestHandler):
                                     type_name=type_name, column_name=column_name))
 
         return dtypes
+
+    def stand_in_columns(self):
+        return self.header_to_key_values('X-QCache-stand-in-columns')
 
     def query(self, dataset_key, q):
         t0 = time.time()
@@ -216,14 +229,15 @@ class DatasetHandler(RequestHandler):
         content_type = self.content_type()
         if content_type == CONTENT_TYPE_CSV:
             durations_until_eviction = self.dataset_cache.ensure_free(len(self.request.body))
-            qf = QFrame.from_csv(self.request.body, column_types=self.dtypes())
+            qf = QFrame.from_csv(self.request.body, column_types=self.dtypes(),
+                                 stand_in_columns=self.stand_in_columns())
         else:
             # This is a waste of CPU cycles, first the JSON decoder decodes all strings
             # from UTF-8 then we immediately encode them back into UTF-8. Couldn't
             # find an easy solution to this though.
             durations_until_eviction = self.dataset_cache.ensure_free(len(self.request.body) / 2)
             data = json.loads(self.request.body, cls=UTF8JSONDecoder)
-            qf = QFrame.from_dicts(data)
+            qf = QFrame.from_dicts(data, stand_in_columns=self.stand_in_columns())
 
         self.dataset_cache[dataset_key] = qf
         self.set_status(ResponseCode.CREATED)

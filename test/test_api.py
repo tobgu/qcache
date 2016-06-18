@@ -36,19 +36,27 @@ class SharedTest(AsyncHTTPTestCase):
     def get_app(self):
         return app.make_app(url_prefix='', debug=True)
 
-    def post_json(self, url, data):
+    def post_json(self, url, data, extra_headers=None):
         body = to_json(data)
-        return self.fetch(url, method='POST', body=body, headers={'Content-Type': 'application/json'})
+        headers = {'Content-Type': 'application/json'}
+
+        if extra_headers:
+            headers.update(extra_headers)
+
+        return self.fetch(url, method='POST', body=body, headers=headers)
 
     def query_json(self, url, query):
         url = url_concat(url, {'q': json.dumps(query)})
         return self.fetch(url, headers={'Accept': 'application/json, text/csv'})
 
-    def post_csv(self, url, data, types=None):
+    def post_csv(self, url, data, types=None, extra_headers=None):
         headers = {'Content-Type': 'text/csv'}
         if types:
             headers['X-QCache-types'] = '; '.join('{column_name}={type_name}'.format(column_name=c, type_name=t)
                                                   for c, t in types.items())
+        if extra_headers:
+            headers.update(extra_headers)
+
         body = to_csv(data)
         return self.fetch(url, method='POST', body=body, headers=headers)
 
@@ -413,6 +421,73 @@ class TestColumnTyping(SharedTest):
         data = [{'some_key': '123456', 'another_key': 1111}]
         response = self.post_csv('/dataset/abc', data, types={'another_key': 'int'})
         assert response.code == 400
+
+
+class TestDefaultColumns(SharedTest):
+    def test_stand_in_column_with_numeric_value(self):
+        response = self.post_csv('/dataset/cba', [{'baz': 1, 'bar': 10}],
+                                 extra_headers={'X-QCache-stand-in-columns': 'foo=13'})
+        assert response.code == 201
+
+        response = self.query_json('/dataset/cba', {'where': ['==', 'foo', 13]})
+        assert response.code == 200
+        assert json.loads(response.body) == [{'baz': 1, 'bar': 10, 'foo': 13}]
+
+        response = self.query_json('/dataset/cba', {'where': ['==', 'foo', 14]})
+        assert response.code == 200
+        assert json.loads(response.body) == []
+
+    def test_stand_in_column_with_string_value(self):
+        response = self.post_csv('/dataset/cba', [{'baz': 1, 'bar': 10}],
+                                 extra_headers={'X-QCache-stand-in-columns': 'foo="13"'})
+        assert response.code == 201
+
+        response = self.query_json('/dataset/cba', {'where': ['==', 'foo', '"13"']})
+        assert response.code == 200
+        assert json.loads(response.body) == [{'baz': 1, 'bar': 10, 'foo': "13"}]
+
+    def test_stand_in_column_with_other_column(self):
+        response = self.post_csv('/dataset/cba', [{'baz': 1, 'bar': 10}, {'baz': 2, 'bar': 20}],
+                                 extra_headers={'X-QCache-stand-in-columns': 'foo=bar'})
+        assert response.code == 201
+
+        response = self.query_json('/dataset/cba', {'where': ['==', 'foo', 20]})
+        assert response.code == 200
+        assert json.loads(response.body) == [{'baz': 2, 'bar': 20, 'foo': 20}]
+
+    def test_multiple_stand_in_columns(self):
+        response = self.post_csv('/dataset/cba', [{'baz': 1, 'bar': 10}],
+                                 extra_headers={'X-QCache-stand-in-columns': 'foo=bar; qux=13'})
+        assert response.code == 201
+
+        response = self.query_json('/dataset/cba', {})
+        assert response.code == 200
+        assert json.loads(response.body) == [{'baz': 1, 'bar': 10, 'foo': 10, 'qux': 13}]
+
+    def test_chained_stand_in_columns(self):
+        response = self.post_csv('/dataset/cba', [{'baz': 1, 'bar': 10}],
+                                 extra_headers={'X-QCache-stand-in-columns': 'foo=13; qux=foo'})
+        assert response.code == 201
+
+        response = self.query_json('/dataset/cba', {})
+        assert response.code == 200
+        assert json.loads(response.body) == [{'baz': 1, 'bar': 10, 'foo': 13, 'qux': 13}]
+
+    def test_json_stand_in_columns(self):
+        response = self.post_json('/dataset/cba', [{'baz': 1, 'bar': 10}],
+                                  extra_headers={'X-QCache-stand-in-columns': 'foo=13'})
+        assert response.code == 201
+
+        response = self.query_json('/dataset/cba', {})
+        assert json.loads(response.body) == [{'baz': 1, 'bar': 10, 'foo': 13}]
+
+    def test_stand_in_column_not_applied_when_column_exists_in_submitted_data(self):
+        response = self.post_csv('/dataset/cba', [{'baz': 1, 'bar': 10}],
+                                 extra_headers={'X-QCache-stand-in-columns': 'bar=13'})
+        assert response.code == 201
+
+        response = self.query_json('/dataset/cba', {})
+        assert json.loads(response.body) == [{'baz': 1, 'bar': 10}]
 
 
 class SSLTestBase(AsyncHTTPTestCase):
