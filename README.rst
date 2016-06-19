@@ -45,7 +45,7 @@ interface with some home grown filter language.
 ********
 Features
 ********
-- Simple, single process, single process, server.
+- Simple, single thread, single process, server.
 - Expressive JSON-based query language with format and features similar to SQL SELECT. Queries
   are data that can easily be transformed or enriched.
 - Support for JSON or CSV input and output format
@@ -333,9 +333,9 @@ Performance & dimensioning
 **************************
 Since QCache is single thread, single process, the way to scale capacity is by adding more servers.
 If you have 8 Gb of ram available on a 4 core machine don't start one server using all 8 Gb. Instead
-start 4 servers with 2 Gb memory each or even 8 servers with 1 Gb each. Assign them to different ports
-and use a client library to do the key balancing between them. That way you will have 4 - 8 times the
-query capacity.
+start 4 servers with 2 Gb memory each or even 8 servers with 1 Gb each or 16 servers with 512 Mb each.
+depending on your use case. Assign them to different ports and use a client library to do the key
+balancing between them. That way you will have 4 - 16 times the query capacity.
 
 QCache is ideal for container deployment. Start one container running one QCache instance.
 
@@ -379,8 +379,6 @@ These may or may not be realized, it's far from sure that all of the ideas are g
 * Other table formats in addition to CSV and JSON?
 * Break out all things dataframe into an own package and provide possibility to update
   and insert into dataframe based on predicate just like querying is done now.
-* Reduce docker images size. Perhaps by using the tiny conda image and use binary builds
-  of pandas and numexpr to avoid all the dependencies that needs to be installed for compilation.
 * Investigate type hints for pandas categorials on enum-like values to improve storage
   layout and filter speed.
 * Support math functions as part of the where clause (see pandas expr.py/ops.py)

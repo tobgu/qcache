@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.5.0 (2016-06-19)
+------------------
+* New header when uploading data, 'X-QCache-stand-in-columns', that let you specify default values
+  for columns that may not be present in the uploaded data.
+
 0.4.2 (2016-06-04)
 ------------------
 * Additional statistics to measure for how long data remains in the cache before it's evicted.
