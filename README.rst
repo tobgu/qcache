@@ -371,7 +371,6 @@ These may or may not be realized, it's far from sure that all of the ideas are g
 * Make it possible to execute multiple queries and return multiple responses in one request (qs=,/qs/).
 * Allow post with data and query in one request, this will guarantee progress
   as long as the dataset fits in memory. {"query": ..., "dataset": ...}
-* Exceptions to Sentry?
 * Possibility to specify indexes when uploading data (how do the indexes affect size? write performance? read performance?)
 * Possibility to upload files as a way to prime the cache without taking up memory.
 * Namespaces for more diverse statistics based on namespace?
@@ -380,7 +379,7 @@ These may or may not be realized, it's far from sure that all of the ideas are g
 * Break out all things dataframe into an own package and provide possibility to update
   and insert into dataframe based on predicate just like querying is done now.
 * Investigate type hints for pandas categorials on enum-like values to improve storage
-  layout and filter speed.
+  layout and filter speed. Check new import options from CSV when Pandas 0.19 is available.
 * Support math functions as part of the where clause (see pandas expr.py/ops.py)
 * Some kind of light weight joining? Could create dataset groups that all are allocated to
   the same cache. Sub queries could then be used to query datasets based on data selected

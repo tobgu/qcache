@@ -134,6 +134,72 @@ def test_and_or_requires_at_least_one_argument(basic_frame, operation):
         basic_frame.query({'where': [operation]})
 
 
+@pytest.fixture
+def bitwise_frame():
+    data = """foo,bar,baz
+    1,1.5,abc
+    2,1.5,def
+    3,1.5,ghi
+    4,1.5,ijk
+    5,1.5,lmn"""
+
+    return QFrame.from_csv(data)
+
+
+@pytest.mark.parametrize("filter, expected_rows", [
+    (1,  [1, 3, 5]),
+    (2,  [2, 3]),
+    (3,  [3]),
+    (4,  [4, 5]),
+    (5,  [5]),
+    (6,  []),
+])
+def test_bitwise_all_bits_with_constant(filter, expected_rows, bitwise_frame):
+    result = bitwise_frame.query({'where': ["all_bits", "foo", filter]}, filter_engine='pandas')
+    assert_rows(result, expected_rows)
+
+
+@pytest.mark.parametrize("filter, expected_rows", [
+    (1,  [1, 3, 5]),
+    (2,  [2, 3]),
+    (3,  [1, 2, 3, 5]),
+    (4,  [4, 5]),
+    (5,  [1, 3, 4, 5]),
+    (6,  [2, 3, 4, 5]),
+    (8,  []),
+])
+def test_bitwise_any_bits_with_constant(filter, expected_rows, bitwise_frame):
+    result = bitwise_frame.query({'where': ["any_bits", "foo", filter]}, filter_engine='pandas')
+    assert_rows(result, expected_rows)
+
+
+def test_bitwise_invalid_arg(bitwise_frame):
+    with pytest.raises(MalformedQueryException):
+        bitwise_frame.query({'where': ["any_bits", "foo", 1.3]}, filter_engine='pandas')
+
+
+def test_bitwise_invalid_column_type(bitwise_frame):
+    with pytest.raises(MalformedQueryException):
+        bitwise_frame.query({'where': ["any_bits", "baz", 1]}, filter_engine='pandas')
+
+
+def test_bitwise_column_missing(bitwise_frame):
+    with pytest.raises(MalformedQueryException):
+        bitwise_frame.query({'where': ["any_bits", "dont_exist", 1]}, filter_engine='pandas')
+
+
+def test_bitwise_invalid_filter_length(bitwise_frame):
+    with pytest.raises(MalformedQueryException):
+        bitwise_frame.query({'where': ["any_bits", "foo", 1, 2]}, filter_engine='pandas')
+
+# NOT of any expression
+# Bitwise and
+# Bitwise or
+# Invalid input type (float, ...)
+
+
+
+
 ############### Projections #######################
 
 

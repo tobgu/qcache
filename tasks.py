@@ -14,6 +14,11 @@ def test():
 
 
 @task
+def test_limited(limit_by):
+    run('python -m py.test -s -v -m "not benchmark" -k{}'.format(limit_by), pty=True)
+
+
+@task
 def benchmark():
     run('python -m py.test -s -v -m "benchmark"', pty=True)
 

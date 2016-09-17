@@ -298,7 +298,75 @@ def _distinct(dataframe, columns):
     return dataframe.drop_duplicates(**args)
 
 
-def _query(dataframe, q):
+def _do_pandas_filter(df, q):
+    if type(q) is not list:
+        return unicode(q)
+
+    if not q:
+        raise_malformed("Empty expression not allowed", q)
+
+    op = q[0]
+    if op in ('any_bits', 'all_bits'):
+        if not len(q) == 3:
+            raise_malformed("Invalid number of arguments", q)
+
+        column, arg = q[1], q[2]
+        if not isinstance(arg, (int, long)):
+            raise_malformed('Invalid argument type, must be an integer:'.format(t=type(arg)), q)
+        try:
+            if q[0] == "any_bits":
+                return df[(df[q[1]] & q[2]) > 0]
+
+            return df[(df[q[1]] & q[2]) == q[2]]
+        except TypeError:
+            raise_malformed("Invalid column type, must be an integer", q)
+        except KeyError:
+            raise_malformed("Column does not exist", q)
+    # elif op == "!":
+    #     if len(q) != 2:
+    #         raise_malformed("! is a single arity operator, invalid number of arguments", q)
+    #
+    #     result = "not " + self._build_filter(q[1])
+    # elif op == "isnull":
+    #     if len(q) != 2:
+    #         raise_malformed("isnull is a single arity operator, invalid number of arguments", q)
+    #
+    #     # Slightly hacky but the only way I've come up with so far.
+    #     result = "({arg} != {arg})".format(arg=q[1])
+    # elif op in ('==', '!=', '<', '<=', '>', '>='):
+    #     if len(q) != 3:
+    #         raise_malformed("Invalid number of arguments", q)
+    #
+    #     _, arg1, arg2 = q
+    #     result = self._build_filter(arg1) + " " + op + " " + self._build_filter(arg2)
+    # elif op in ('&', '|'):
+    #     if len(q) < 2:
+    #         raise_malformed("Invalid number of arguments", q)
+    #     elif len(q) == 2:
+    #         # Conjunctions and disjunctions with only one clause are OK
+    #         result = self._build_filter(q[1])
+    #     else:
+    #         result = ' {op} '.format(op=op).join(self._build_filter(x) for x in q[1:])
+    # elif op == 'in':
+    #     if len(q) != 3:
+    #         raise_malformed("Invalid number of arguments", q)
+    #
+    #     _, arg1, arg2 = q
+    #     var_name = self._insert_in_env(arg2)
+    #     result = '{arg1} in @env.{var_name}'.format(arg1=arg1, var_name=var_name)
+    else:
+        raise_malformed("Unknown operator", q)
+
+
+def _pandas_filter(df, filter_q):
+    if filter_q:
+        assert_list('where', filter_q)
+        return _do_pandas_filter(df, filter_q)
+
+    return df
+
+
+def _query(dataframe, q, filter_engine=None):
     if not isinstance(q, dict):
         raise MalformedQueryException('Query must be a dictionary, not "{q}"'.format(q=q))
 
@@ -309,10 +377,13 @@ def _query(dataframe, q):
 
     try:
         if CLAUSE_FROM in q:
-            dataframe, _ = _query(dataframe, q[CLAUSE_FROM])
+            dataframe, _ = _query(dataframe, q[CLAUSE_FROM], filter_engine=filter_engine)
 
-        filter = Filter()
-        filtered_df = filter.filter(dataframe, q.get('where'))
+        if filter_engine == 'pandas':
+            filtered_df = _pandas_filter(dataframe, q.get('where'))
+        else:
+            filter = Filter()
+            filtered_df = filter.filter(dataframe, q.get('where'))
         grouped_df = _group_by(filtered_df, q.get('group_by'))
         distinct_df = _distinct(grouped_df, q.get('distinct'))
         projected_df = _project(distinct_df, q.get('select'))
@@ -509,13 +580,13 @@ class QFrame(object):
         _add_stand_in_columns(df, stand_in_columns=stand_in_columns)
         return QFrame(df)
 
-    def query(self, q):
+    def query(self, q, filter_engine=None):
         if 'update' in q:
             # In place operation, should it be?
             _update(self.df, q)
             return None
 
-        new_df, unsliced_df_len = _query(self.df, q)
+        new_df, unsliced_df_len = _query(self.df, q, filter_engine=filter_engine)
         return QFrame(new_df, unsliced_df_len=unsliced_df_len)
 
     def to_csv(self):
