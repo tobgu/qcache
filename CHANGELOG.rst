@@ -1,12 +1,19 @@
 Changelog
 =========
+
+0.6.1 (2016-09-18)
+------------------
+* Fix packaging, the new qcache.qframe package was missing from the submitted package.
+
 0.6.0 (2016-09-18)
 ------------------
 * New filter engine based on Pandas rather than Numexpr. This enables new types of filters in the where
   clause (see below). By default the old engine is still used but the new one can be enabled either
   by default on server startup or on a per-query basis by setting the new 'X-QCache-filter-engine' header
   to 'pandas'.
-*
+* New bitwise filters in the 'pandas' filter engine, 'all_bits' and 'any_bits'.
+* New string filters, 'like' and 'ilike' which corresponds roughly to LIKE in SQL with the addition
+  of regex support. 'like' is case sensitive while 'ilike' is case insensitive.
 
 0.5.0 (2016-06-19)
 ------------------
