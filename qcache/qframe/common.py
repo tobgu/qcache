@@ -1,3 +1,6 @@
+from __future__ import unicode_literals
+
+
 class MalformedQueryException(Exception):
     pass
 
@@ -14,3 +17,14 @@ def assert_integer(name, i):
 def assert_list(name, l):
     if not isinstance(l, list):
         raise_malformed('Invalid format for {name}'.format(name=name), l)
+
+
+def is_quoted(string):
+    l = len(string)
+    return (l >= 2) and \
+           ((string[0] == "'" and string[l - 1] == "'") or
+            (string[0] == '"' and string[l - 1] == '"'))
+
+
+def unquote(s):
+    return s[1:len(s) - 1]
