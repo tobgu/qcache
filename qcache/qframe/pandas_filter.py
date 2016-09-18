@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
+
 from qcache.qframe import COMPARISON_OPERATORS, JOINING_OPERATORS
-from qcache.qframe.common import assert_list, raise_malformed, is_quoted, unquote
+from qcache.qframe.common import assert_list, raise_malformed, is_quoted, unquote, assert_len
 
 
 def _leaf_node(df, q):
@@ -17,9 +18,7 @@ def _leaf_node(df, q):
 
 
 def _bitwise_filter(df, q):
-    if not len(q) == 3:
-        raise_malformed("Invalid number of arguments", q)
-
+    assert_len(q, 3)
     op, column, arg = q
     if not isinstance(arg, (int, long)):
         raise_malformed('Invalid argument type, must be an integer:'.format(t=type(arg)), q)
@@ -34,24 +33,19 @@ def _bitwise_filter(df, q):
 
 
 def _not_filter(df, q):
-    if len(q) != 2:
-        raise_malformed("! is a single arity operator, invalid number of arguments", q)
-
+    assert_len(q, 2, "! is a single arity operator, invalid number of arguments")
     return ~_do_pandas_filter(df, q[1])
 
 
 def _isnull_filter(df, q):
-    if len(q) != 2:
-        raise_malformed("isnull is a single arity operator, invalid number of arguments", q)
+    assert_len(q, 2, "isnull is a single arity operator, invalid number of arguments")
 
     # Slightly hacky but the only way I've come up with so far.
     return df[q[1]] != df[q[1]]
 
 
 def _comparison_filter(df, q):
-    if len(q) != 3:
-        raise_malformed("Invalid number of arguments", q)
-
+    assert_len(q, 3)
     op, col_name, arg = q
     return COMPARISON_OPERATORS[op](df[col_name], _do_pandas_filter(df, arg))
 
@@ -71,9 +65,7 @@ def _join_filter(df, q):
 
 
 def _in_filter(df, q):
-    if len(q) != 3:
-        raise_malformed("Invalid number of arguments", q)
-
+    assert_len(q, 3)
     _, col_name, args = q
 
     if not isinstance(args, list):
@@ -83,9 +75,7 @@ def _in_filter(df, q):
 
 
 def _like_filter(df, q):
-    if len(q) != 3:
-        raise_malformed("Invalid number of arguments", q)
-
+    assert_len(q, 3)
     op, column, raw_expr = q
 
     if not is_quoted(raw_expr):

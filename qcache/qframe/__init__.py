@@ -250,16 +250,6 @@ def _get_dtype(obj):
         return numpy.object
 
 
-def _strip_quotes(stand_in):
-    if stand_in.startswith("'") or stand_in.startswith('"'):
-        stand_in = stand_in[1:]
-
-    if stand_in.endswith("'") or stand_in.endswith('"'):
-        stand_in = stand_in[:-1]
-
-    return stand_in
-
-
 def _add_stand_in_columns(df, stand_in_columns):
     if not stand_in_columns:
         return df
@@ -270,7 +260,7 @@ def _add_stand_in_columns(df, stand_in_columns):
                 df.loc[:, column_name] = df[stand_in_value]
             else:
                 dtype = _get_dtype(stand_in_value)
-                stand_in_value = _strip_quotes(stand_in_value)
+                stand_in_value = unquote(stand_in_value)
                 arr = numpy.full(len(df), stand_in_value, dtype=dtype)
                 df.loc[:, column_name] = pandas.Series(arr, index=df.index)
 

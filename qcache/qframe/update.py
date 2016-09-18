@@ -1,4 +1,5 @@
 from qcache.qframe import raise_malformed, COMPARISON_OPERATORS, is_quoted, unquote
+from qcache.qframe.common import assert_len
 
 
 def _prepare_arg(df, arg):
@@ -20,8 +21,7 @@ def _build_update_filter(df, update_q):
 
     operator = update_q[0]
     if operator == "isnull":
-        if len(update_q) != 2:
-            raise_malformed('Invalid length of isnull query', update_q)
+        assert_len(update_q, 2, 'Invalid length of isnull query')
         try:
             return getattr(_prepare_arg(df, update_q[1]), 'isnull')()
         except AttributeError:

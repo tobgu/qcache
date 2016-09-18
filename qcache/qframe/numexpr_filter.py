@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from qcache.qframe.common import raise_malformed, assert_list
+from qcache.qframe.common import raise_malformed, assert_list, assert_len
 from qcache.qframe.constants import JOINING_OPERATORS, COMPARISON_OPERATORS
 
 
@@ -37,20 +37,15 @@ class Filter(object):
 
         op = q[0]
         if op == "!":
-            if len(q) != 2:
-                raise_malformed("! is a single arity operator, invalid number of arguments", q)
-
+            assert_len(q, 2, "! is a single arity operator, invalid number of arguments")
             result = "not " + self._build_filter(q[1])
         elif op == "isnull":
-            if len(q) != 2:
-                raise_malformed("isnull is a single arity operator, invalid number of arguments", q)
+            assert_len(q, 2, "isnull is a single arity operator, invalid number of arguments")
 
             # Slightly hacky but the only way I've come up with so far.
             result = "({arg} != {arg})".format(arg=q[1])
         elif op in COMPARISON_OPERATORS:
-            if len(q) != 3:
-                raise_malformed("Invalid number of arguments", q)
-
+            assert_len(q, 3)
             _, arg1, arg2 = q
             result = self._build_filter(arg1) + " " + op + " " + self._build_filter(arg2)
         elif op in JOINING_OPERATORS:
@@ -62,9 +57,7 @@ class Filter(object):
             else:
                 result = ' {op} '.format(op=op).join(self._build_filter(x) for x in q[1:])
         elif op == 'in':
-            if len(q) != 3:
-                raise_malformed("Invalid number of arguments", q)
-
+            assert_len(q, 3)
             _, arg1, arg2 = q
             var_name = self._insert_in_env(arg2)
             result = '{arg1} in @env.{var_name}'.format(arg1=arg1, var_name=var_name)
