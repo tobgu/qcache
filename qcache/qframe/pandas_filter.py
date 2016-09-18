@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 from qcache.qframe import COMPARISON_OPERATORS, JOINING_OPERATORS
-from qcache.qframe.common import assert_list, raise_malformed, is_quoted
+from qcache.qframe.common import assert_list, raise_malformed, is_quoted, unquote
 
 
 def _leaf_node(df, q):
@@ -82,6 +82,36 @@ def _in_filter(df, q):
     return df[col_name].isin(args)
 
 
+def _like_filter(df, q):
+    if len(q) != 3:
+        raise_malformed("Invalid number of arguments", q)
+
+    op, column, raw_expr = q
+
+    if not is_quoted(raw_expr):
+        raise_malformed("like expects a quoted string as second argument", q)
+
+    regexp = unquote(raw_expr)
+
+    if not regexp.startswith('%'):
+        regexp = '^' + regexp
+    else:
+        regexp = regexp[1:]
+
+    if not regexp.endswith('%'):
+        regexp += '$'
+    else:
+        regexp = regexp[:-1]
+
+    # 'like' is case sensitive, 'ilike' is case insensitive
+    case = op == 'like'
+
+    try:
+        return df[column].str.contains(regexp, case=case)
+    except AttributeError:
+        raise_malformed("Invalid column type for (i)like", q)
+
+
 def _do_pandas_filter(df, q):
     if not isinstance(q, list):
         return _leaf_node(df, q)
@@ -104,6 +134,8 @@ def _do_pandas_filter(df, q):
             result = _join_filter(df, q)
         elif op == 'in':
             result = _in_filter(df, q)
+        elif op in ('like', 'ilike'):
+            result = _like_filter(df, q)
         else:
             raise_malformed("Unknown operator", q)
     except KeyError:

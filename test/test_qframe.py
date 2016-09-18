@@ -198,6 +198,54 @@ def test_bitwise_invalid_filter_length(bitwise_frame):
         bitwise_frame.query({'where': ["any_bits", "foo", 1, 2]}, filter_engine='pandas')
 
 
+@pytest.fixture
+def string_frame():
+    data = """foo,bar
+    1,abcd
+    2,defg
+    3,ghij
+    4,gxyj"""
+
+    return QFrame.from_csv(data)
+
+
+@pytest.mark.parametrize("operator, filter, expected_rows", [
+    ("like", "'a%'",   [1]),
+    ("like", "'%g'",   [2]),
+    ("like", "'%d%'",  [1, 2]),
+    ("like", "'%cc%'", []),
+    ("like", "''",     []),
+    ("like", "'%'",    [1, 2, 3, 4]),
+    ("like", "'%%'",   [1, 2, 3, 4]),
+    ("like", "'%D%'",  []),
+    ("ilike", "'%D%'",  [1, 2]),
+    ("like", "'%g[a-z]{2}j%'",  [3, 4]),
+    ("like", "'%g[a-z]{3}j%'",  []),
+    ("like", "'g[a-z]{2}j'",  [3, 4]),
+    ("like", "'g[a-z]{2}'",  []),
+    ("like", "'g[a-z]{2}%'",  [3, 4]),
+    ("like", "'g[a-z]{3}'",  [3, 4]),
+])
+def test_like(operator, filter, expected_rows, string_frame):
+    result = string_frame.query({'where': [operator, "bar", filter]}, filter_engine='pandas')
+    assert_rows(result, expected_rows)
+
+
+def test_like_missing_quotes_on_argument(string_frame):
+    with pytest.raises(MalformedQueryException):
+        string_frame.query({'where': ['like', "bar", "%abc%"]}, filter_engine='pandas')
+
+
+def test_like_invalid_argument_type(string_frame):
+    with pytest.raises(MalformedQueryException):
+        string_frame.query({'where': ['like', "bar", 12]}, filter_engine='pandas')
+
+
+def test_like_invalid_column_type(string_frame):
+    with pytest.raises(MalformedQueryException):
+        string_frame.query({'where': ['like', "foo", "'%a%'"]}, filter_engine='pandas')
+
+
 ############### Projections #######################
 
 

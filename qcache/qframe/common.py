@@ -22,9 +22,9 @@ def assert_list(name, l):
 def is_quoted(string):
     l = len(string)
     return (l >= 2) and \
-           ((string[0] == "'" and string[l - 1] == "'") or
-            (string[0] == '"' and string[l - 1] == '"'))
+           ((string[0] == "'" and string[-1] == "'") or
+            (string[0] == '"' and string[-1] == '"'))
 
 
 def unquote(s):
-    return s[1:len(s) - 1]
+    return s[1:-1]
