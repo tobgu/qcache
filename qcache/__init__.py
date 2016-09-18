@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-'''QCache
+"""QCache
 
 Usage:
   qcache [-hd] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE] [--statistics-buffer-size=BUFFER_SIZE]
-         [--cert-file=PATH_TO_CERT] [--basic-auth=<USER>:<PASSWORD>]
+         [--cert-file=PATH_TO_CERT] [--basic-auth=<USER>:<PASSWORD>] [--default-filter-engine=FILTER_ENGINE]
 
 Options:
   -h --help                     Show this screen
@@ -16,7 +16,9 @@ Options:
   -c PATH_TO_CERT --cert-file=PATH_TO_CERT   Path to PEM file containing private key and certificate for SSL
   -d --debug   Run in debug mode
   -ba <USER>:<PASSWORD> --basic-auth=<USER>:<PASSWORD>   Enable basic auth, requires that SSL is enabled.
-'''
+  --default-filter-engine=FILTER_ENGINE   Which filter engine to use if none is specified in the query.
+                                          Possible values: numexpr/pandas. [default: numexpr]
+"""
 
 from docopt import docopt
 from qcache.app import run
@@ -42,7 +44,8 @@ def main():
             statistics_buffer_size=int(args['--statistics-buffer-size']),
             debug=args['--debug'],
             certfile=args['--cert-file'],
-            basic_auth=args['--basic-auth'])
+            basic_auth=args['--basic-auth'],
+            default_filter_engine=args['--default-filter-engine'])
 
 if __name__ == '__main__':
     main()

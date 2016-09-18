@@ -78,6 +78,11 @@ def publish(test=False):
 
 
 @task
+def install():
+    run('python setup.py sdist install')
+
+
+@task
 def build_image():
     run("sudo docker build -t tobgu/qcache:{version} .".format(version=qcache_version))
     run("sudo docker tag -f tobgu/qcache:{version} tobgu/qcache:latest".format(version=qcache_version))

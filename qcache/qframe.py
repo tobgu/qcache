@@ -21,6 +21,10 @@ QUERY_CLAUSES = {CLAUSE_WHERE, CLAUSE_GROUP_BY, CLAUSE_DISTINCT, CLAUSE_SELECT,
                  CLAUSE_ORDER_BY, CLAUSE_OFFSET, CLAUSE_LIMIT, CLAUSE_FROM}
 
 
+FILTER_ENGINE_PANDAS = 'pandas'
+FILTER_ENGINE_NUMEXPR = 'numexpr'
+
+
 class MalformedQueryException(Exception):
     pass
 
@@ -81,13 +85,13 @@ class Filter(object):
 
             # Slightly hacky but the only way I've come up with so far.
             result = "({arg} != {arg})".format(arg=q[1])
-        elif op in ('==', '!=', '<', '<=', '>', '>='):
+        elif op in COMPARISON_OPERATORS:
             if len(q) != 3:
                 raise_malformed("Invalid number of arguments", q)
 
             _, arg1, arg2 = q
             result = self._build_filter(arg1) + " " + op + " " + self._build_filter(arg2)
-        elif op in ('&', '|'):
+        elif op in JOINING_OPERATORS:
             if len(q) < 2:
                 raise_malformed("Invalid number of arguments", q)
             elif len(q) == 2:
@@ -298,70 +302,98 @@ def _distinct(dataframe, columns):
     return dataframe.drop_duplicates(**args)
 
 
+def _is_quoted(s):
+    return s.startswith('"') and s.endswith('"') or s.startswith("'") and s.endswith("'")
+
+
+def _leaf_node(df, q):
+    if isinstance(q, basestring):
+        if _is_quoted(q):
+            return q[1:-1].encode('utf-8')
+
+        try:
+            return df[q]
+        except KeyError:
+            raise_malformed("Unknown column", q)
+
+    return q
+
+
 def _do_pandas_filter(df, q):
-    if type(q) is not list:
-        return unicode(q)
+    if not isinstance(q, list):
+        return _leaf_node(df, q)
 
     if not q:
         raise_malformed("Empty expression not allowed", q)
 
+    result = None
     op = q[0]
-    if op in ('any_bits', 'all_bits'):
-        if not len(q) == 3:
-            raise_malformed("Invalid number of arguments", q)
+    try:
+        if op in ('any_bits', 'all_bits'):
+            if not len(q) == 3:
+                raise_malformed("Invalid number of arguments", q)
 
-        column, arg = q[1], q[2]
-        if not isinstance(arg, (int, long)):
-            raise_malformed('Invalid argument type, must be an integer:'.format(t=type(arg)), q)
-        try:
-            if q[0] == "any_bits":
-                return df[(df[q[1]] & q[2]) > 0]
+            _, column, arg = q
+            if not isinstance(arg, (int, long)):
+                raise_malformed('Invalid argument type, must be an integer:'.format(t=type(arg)), q)
+            try:
+                series = df[column] & arg
+                if q[0] == "any_bits":
+                    result = series > 0
+                else:
+                    result = series == arg
+            except TypeError:
+                raise_malformed("Invalid column type, must be an integer", q)
+        elif op == "!":
+            if len(q) != 2:
+                raise_malformed("! is a single arity operator, invalid number of arguments", q)
 
-            return df[(df[q[1]] & q[2]) == q[2]]
-        except TypeError:
-            raise_malformed("Invalid column type, must be an integer", q)
-        except KeyError:
-            raise_malformed("Column does not exist", q)
-    # elif op == "!":
-    #     if len(q) != 2:
-    #         raise_malformed("! is a single arity operator, invalid number of arguments", q)
-    #
-    #     result = "not " + self._build_filter(q[1])
-    # elif op == "isnull":
-    #     if len(q) != 2:
-    #         raise_malformed("isnull is a single arity operator, invalid number of arguments", q)
-    #
-    #     # Slightly hacky but the only way I've come up with so far.
-    #     result = "({arg} != {arg})".format(arg=q[1])
-    # elif op in ('==', '!=', '<', '<=', '>', '>='):
-    #     if len(q) != 3:
-    #         raise_malformed("Invalid number of arguments", q)
-    #
-    #     _, arg1, arg2 = q
-    #     result = self._build_filter(arg1) + " " + op + " " + self._build_filter(arg2)
-    # elif op in ('&', '|'):
-    #     if len(q) < 2:
-    #         raise_malformed("Invalid number of arguments", q)
-    #     elif len(q) == 2:
-    #         # Conjunctions and disjunctions with only one clause are OK
-    #         result = self._build_filter(q[1])
-    #     else:
-    #         result = ' {op} '.format(op=op).join(self._build_filter(x) for x in q[1:])
-    # elif op == 'in':
-    #     if len(q) != 3:
-    #         raise_malformed("Invalid number of arguments", q)
-    #
-    #     _, arg1, arg2 = q
-    #     var_name = self._insert_in_env(arg2)
-    #     result = '{arg1} in @env.{var_name}'.format(arg1=arg1, var_name=var_name)
-    else:
-        raise_malformed("Unknown operator", q)
+            result = ~_do_pandas_filter(df, q[1])
+        elif op == "isnull":
+            if len(q) != 2:
+                raise_malformed("isnull is a single arity operator, invalid number of arguments", q)
+
+            # Slightly hacky but the only way I've come up with so far.
+            result = df[q[1]] != df[q[1]]
+        elif op in COMPARISON_OPERATORS:
+            if len(q) != 3:
+                raise_malformed("Invalid number of arguments", q)
+
+            _, col_name, arg = q
+            result = COMPARISON_OPERATORS[op](df[col_name], _do_pandas_filter(df, arg))
+        elif op in JOINING_OPERATORS:
+            if len(q) < 2:
+                raise_malformed("Invalid number of arguments", q)
+            elif len(q) == 2:
+                # Conjunctions and disjunctions with only one clause are OK
+                result = _do_pandas_filter(df, q[1])
+            else:
+                result = reduce(lambda l, r: JOINING_OPERATORS[op](l, _do_pandas_filter(df, r)),
+                                q[2:], _do_pandas_filter(df, q[1]))
+        elif op == 'in':
+            if len(q) != 3:
+                raise_malformed("Invalid number of arguments", q)
+
+            _, col_name, args = q
+
+            if not isinstance(args, list):
+                raise_malformed("Second argument must be a list", q)
+
+            result = df[col_name].isin(args)
+        else:
+            raise_malformed("Unknown operator", q)
+    except KeyError:
+        raise_malformed("Column is not defined", q)
+    except TypeError:
+        raise_malformed("Invalid type in argument", q)
+
+    return result
 
 
 def _pandas_filter(df, filter_q):
     if filter_q:
         assert_list('where', filter_q)
-        return _do_pandas_filter(df, filter_q)
+        return df[_do_pandas_filter(df, filter_q)]
 
     return df
 
@@ -379,9 +411,10 @@ def _query(dataframe, q, filter_engine=None):
         if CLAUSE_FROM in q:
             dataframe, _ = _query(dataframe, q[CLAUSE_FROM], filter_engine=filter_engine)
 
-        if filter_engine == 'pandas':
+        if filter_engine == FILTER_ENGINE_PANDAS:
             filtered_df = _pandas_filter(dataframe, q.get('where'))
         else:
+            # Default to use numexpr filter engine
             filter = Filter()
             filtered_df = filter.filter(dataframe, q.get('where'))
         grouped_df = _group_by(filtered_df, q.get('group_by'))
@@ -413,6 +446,9 @@ def _prepare_arg(df, arg):
         return getattr(df, arg)
 
     return arg
+
+JOINING_OPERATORS = {'&': operator.and_,
+                     '|': operator.or_}
 
 COMPARISON_OPERATORS = {'==': operator.eq,
                         '!=': operator.ne,
@@ -451,7 +487,7 @@ def _build_update_filter(df, update_q):
 
         return getattr(df, column).isin([_prepare_arg(df, val) for val in values])
 
-    if operator in COMPARISON_OPERATORS.keys():
+    if operator in COMPARISON_OPERATORS:
         arg1 = _prepare_arg(df, update_q[1])
         arg2 = _prepare_arg(df, update_q[2])
         return COMPARISON_OPERATORS[operator](arg1, arg2)

@@ -8,7 +8,7 @@ from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
 
 from qcache.dataset_cache import DatasetCache
-from qcache.qframe import MalformedQueryException, QFrame
+from qcache.qframe import MalformedQueryException, QFrame, FILTER_ENGINE_NUMEXPR
 from qcache.statistics import Statistics
 
 
@@ -98,10 +98,11 @@ class AppState(object):
 
 @http_auth
 class DatasetHandler(RequestHandler):
-    def initialize(self, dataset_cache, state, stats):
+    def initialize(self, dataset_cache, state, stats, default_filter_engine):
         self.dataset_cache = dataset_cache
         self.state = state
         self.stats = stats
+        self.default_filter_engine = default_filter_engine
 
     def accept_type(self):
         accept_types = [t.strip() for t in self.request.headers.get('Accept', CONTENT_TYPE_JSON).split(',')]
@@ -170,7 +171,8 @@ class DatasetHandler(RequestHandler):
 
         qf = self.dataset_cache[dataset_key]
         try:
-            result_frame = qf.query(q)
+            filter_engine = self.request.headers.get('X-QCache-filter-engine', None) or self.default_filter_engine
+            result_frame = qf.query(q, filter_engine=filter_engine)
         except MalformedQueryException as e:
             self.write(json.dumps({'error': e.message}))
             self.set_status(ResponseCode.BAD_REQUEST)
@@ -276,7 +278,7 @@ class StatisticsHandler(RequestHandler):
 
 
 def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_age=0,
-             statistics_buffer_size=1000, basic_auth=None):
+             statistics_buffer_size=1000, basic_auth=None, default_filter_engine=FILTER_ENGINE_NUMEXPR):
     if basic_auth:
         global auth_user, auth_password
         auth_user, auth_password = basic_auth.split(':', 2)
@@ -286,8 +288,7 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
                            url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)/?(q)?".format(url_prefix=url_prefix),
                                DatasetHandler,
                                dict(dataset_cache=DatasetCache(max_size=max_cache_size, max_age=max_age),
-                                    state=AppState(),
-                                    stats=stats),
+                                    state=AppState(), stats=stats, default_filter_engine=default_filter_engine),
                                name="dataset"),
                            url(r"{url_prefix}/status".format(url_prefix=url_prefix), StatusHandler, {}, name="status"),
                            url(r"{url_prefix}/statistics".format(
@@ -296,19 +297,22 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
 
 
 def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000,
-        debug=False, certfile=None, basic_auth=None):
+        debug=False, certfile=None, basic_auth=None, default_filter_engine=FILTER_ENGINE_NUMEXPR):
     if basic_auth and not certfile:
         print "SSL must be enbabled to use basic auth!"
         return
 
     print("Starting on port {port}, max cache size {max_cache_size} bytes, max age {max_age} seconds,"
-          " statistics_buffer_size {statistics_buffer_size}, debug={debug}".format(
+          " statistics_buffer_size {statistics_buffer_size}, debug={debug},"
+          " default_filter_engine={default_filter_engine}".format(
         port=port, max_cache_size=max_cache_size, max_age=max_age,
-        statistics_buffer_size=statistics_buffer_size, debug=debug))
+        statistics_buffer_size=statistics_buffer_size, debug=debug,
+        default_filter_engine=default_filter_engine))
 
     app = make_app(
         debug=debug, max_cache_size=max_cache_size, max_age=max_age,
-        statistics_buffer_size=statistics_buffer_size, basic_auth=basic_auth)
+        statistics_buffer_size=statistics_buffer_size, basic_auth=basic_auth,
+        default_filter_engine=default_filter_engine)
 
     args = {}
     if certfile:

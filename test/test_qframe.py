@@ -12,6 +12,11 @@ def query(df, q):
 ######################### Filtering ##########################
 
 
+@pytest.fixture(scope='session', params=['numexpr', 'pandas'])
+def engine(request):
+    return request.param
+
+
 @pytest.fixture
 def basic_frame():
     data = """
@@ -42,49 +47,49 @@ def assert_rows(qframe, rows):
     ("==", 'foo', "'ccc'", 'ccc'),
     ("!=", 'qux', "'qqq'", 'ccc'),
 ])
-def test_filter_operations(basic_frame, operation, column, value, expected):
-    frame = basic_frame.query({'where': [operation, column, value]})
+def test_filter_operations(basic_frame, engine, operation, column, value, expected):
+    frame = basic_frame.query({'where': [operation, column, value]}, filter_engine=engine)
     assert_rows(frame, [expected])
 
 
-def test_negation(basic_frame):
-    frame = basic_frame.query({'where': ["!", ["==", "qux", "'qqq'"]]})
+def test_negation(basic_frame, engine):
+    frame = basic_frame.query({'where': ["!", ["==", "qux", "'qqq'"]]}, filter_engine=engine)
     assert_rows(frame, ['ccc'])
 
 
-def test_and(basic_frame):
-    frame = basic_frame.query({'where': ["&", ["==", "qux", "'qqq'"], [">", "baz", 6]]})
+def test_and(basic_frame, engine):
+    frame = basic_frame.query({'where': ["&", ["==", "qux", "'qqq'"], [">", "baz", 6]]}, filter_engine=engine)
     assert_rows(frame, ['aaa'])
 
 
-def test_and_with_only_one_clause(basic_frame):
-    frame = basic_frame.query({'where': ["&", ["==", "foo", "'aaa'"]]})
+def test_and_with_only_one_clause(basic_frame, engine):
+    frame = basic_frame.query({'where': ["&", ["==", "foo", "'aaa'"]]}, filter_engine=engine)
     assert_rows(frame, ['aaa'])
 
-    frame = basic_frame.query({'where': ["&", ["==", "foo", "'abc'"]]})
+    frame = basic_frame.query({'where': ["&", ["==", "foo", "'abc'"]]}, filter_engine=engine)
     assert_rows(frame, [])
 
 
-def test_or(basic_frame):
-    frame = basic_frame.query({'where': ["|", ["==", "baz", 5], ["==", "baz", 7]]})
+def test_or(basic_frame, engine):
+    frame = basic_frame.query({'where': ["|", ["==", "baz", 5], ["==", "baz", 7]]}, filter_engine=engine)
     assert_rows(frame, ['bbb', 'aaa'])
 
 
-def test_or_with_only_one_clause(basic_frame):
-    frame = basic_frame.query({'where': ["|", ["==", "foo", "'aaa'"]]})
+def test_or_with_only_one_clause(basic_frame, engine):
+    frame = basic_frame.query({'where': ["|", ["==", "foo", "'aaa'"]]}, filter_engine=engine)
     assert_rows(frame, ['aaa'])
 
-    frame = basic_frame.query({'where': ["|", ["==", "foo", "'abc'"]]})
+    frame = basic_frame.query({'where': ["|", ["==", "foo", "'abc'"]]}, filter_engine=engine)
     assert_rows(frame, [])
 
 
-def test_col_in_list(basic_frame):
-    frame = basic_frame.query({'where': ["in", "baz", [5, 8, -2]]})
+def test_col_in_list(basic_frame, engine):
+    frame = basic_frame.query({'where': ["in", "baz", [5, 8, -2]]}, filter_engine=engine)
     assert_rows(frame, ['bbb'])
 
 
-def test_null_value(basic_frame):
-    frame = basic_frame.query({'where': ["isnull", "bar"]})
+def test_null_value(basic_frame, engine):
+    frame = basic_frame.query({'where': ["isnull", "bar"]}, filter_engine=engine)
     assert_rows(frame, ['ccc'])
 
 
@@ -94,44 +99,44 @@ def test_string_in_col(basic_frame):
     assert_rows(frame, ['bbb'])
 
 
-def test_unknown_column_name(basic_frame):
+def test_unknown_column_name(basic_frame, engine):
     with pytest.raises(MalformedQueryException):
-        basic_frame.query({'where': ["==", "unknown", 3]})
+        basic_frame.query({'where': ["==", "unknown", 3]}, filter_engine=engine)
 
 
-def test_invalid_column_name(basic_frame):
+def test_invalid_column_name(basic_frame, engine):
     with pytest.raises(MalformedQueryException):
-        basic_frame.query({'where': ["==", "<foo:3>", 3]})
+        basic_frame.query({'where': ["==", "<foo:3>", 3]}, filter_engine=engine)
 
 
-def test_empty_filter_returns_same_frame(basic_frame):
-    assert basic_frame.query({'where': []}).df.equals(basic_frame.df)
+def test_empty_filter_returns_same_frame(basic_frame, engine):
+    assert basic_frame.query({'where': []}, filter_engine=engine).df.equals(basic_frame.df)
 
 
-def test_empty_filter_clause_not_allowed(basic_frame):
+def test_empty_filter_clause_not_allowed(basic_frame, engine):
     with pytest.raises(MalformedQueryException):
-        basic_frame.query({'where': ["|", []]})
+        basic_frame.query({'where': ["|", []]}, filter_engine=engine)
 
 
 @pytest.mark.parametrize("operation", ["!", "isnull"])
-def test_single_argument_operators_require_single_argument(basic_frame, operation):
+def test_single_argument_operators_require_single_argument(basic_frame, operation, engine):
     with pytest.raises(MalformedQueryException):
-        basic_frame.query({'where': [operation, 'foo', 'bar']})
+        basic_frame.query({'where': [operation, 'foo', 'bar']}, filter_engine=engine)
 
 
 @pytest.mark.parametrize("operation", ["<", ">", ">", "<=", "<=", ">=", ">=", "==", "!=", "in"])
-def test_double_argument_operators_require_single_argument(basic_frame, operation):
+def test_double_argument_operators_require_single_argument(basic_frame, operation, engine):
     with pytest.raises(MalformedQueryException):
-        basic_frame.query({'where': [operation, 'foo']})
+        basic_frame.query({'where': [operation, 'foo']}, filter_engine=engine)
 
     with pytest.raises(MalformedQueryException):
-        basic_frame.query({'where': [operation, 'foo', 'bar', 'baz']})
+        basic_frame.query({'where': [operation, 'foo', 'bar', 'baz']}, filter_engine=engine)
 
 
 @pytest.mark.parametrize("operation", ["&", "|"])
-def test_and_or_requires_at_least_one_argument(basic_frame, operation):
+def test_and_or_requires_at_least_one_argument(basic_frame, operation, engine):
     with pytest.raises(MalformedQueryException):
-        basic_frame.query({'where': [operation]})
+        basic_frame.query({'where': [operation]}, filter_engine=engine)
 
 
 @pytest.fixture
@@ -191,13 +196,6 @@ def test_bitwise_column_missing(bitwise_frame):
 def test_bitwise_invalid_filter_length(bitwise_frame):
     with pytest.raises(MalformedQueryException):
         bitwise_frame.query({'where': ["any_bits", "foo", 1, 2]}, filter_engine='pandas')
-
-# NOT of any expression
-# Bitwise and
-# Bitwise or
-# Invalid input type (float, ...)
-
-
 
 
 ############### Projections #######################
