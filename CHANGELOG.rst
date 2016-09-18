@@ -1,5 +1,12 @@
 Changelog
 =========
+0.6.0 (2016-09-18)
+------------------
+* New filter engine based on Pandas rather than Numexpr. This enables new types of filters in the where
+  clause (see below). By default the old engine is still used but the new one can be enabled either
+  by default on server startup or on a per-query basis by setting the new 'X-QCache-filter-engine' header
+  to 'pandas'.
+*
 
 0.5.0 (2016-06-19)
 ------------------
