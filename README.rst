@@ -55,7 +55,7 @@ Features
   through HTTP API
 - Scales linearly in query capacity with the number of servers. A python client library that
   uses consistent hashing for key distribution among servers is available
-  here QCache-client_. There's also a Go client under development here Go-QCache-client_.
+  here QCache-client_. There's also a basic Go client here Go-QCache-client_.
   More clients are welcome!
 
 
@@ -177,6 +177,33 @@ In
 .. code:: python
 
    {"where": ["in", "foo", [1, 2]]}
+
+
+Like/ilike
+----------
+.. note:: This is only available in the pandas filter engine. See filter-engines_.
+
+Like and ilike are used for string matching and work similar to LIKE in SQL. Like is case sensitive
+while ilike is case insensitive. In addition to string matching using % as wildcard like/ilike also
+supports regexps.
+
+.. code:: python
+
+   {"where": ["like", "foo", "'%bar%'"]}
+
+
+Bitwise operators
+-----------------
+.. note:: This is only available in the pandas filter engine. See filter-engines_.
+
+There are two operators for bitwise filtering on integers: `allbits` and `anybits`.
+
+* allbits - evaluates to true if all bits in the supplied argument are set in value tested against.
+* anybits - evaluates to true if any bits in the supplied argument are set in value tested agains.
+
+.. code:: python
+
+   {"where": ["anybits", "foo", 31]}
 
 
 Clauses
@@ -305,11 +332,89 @@ Query table
    curl -G localhost:8888/qcache/dataset/my-key --data-urlencode "q={\"where\": [\"==\", \"foo\", \"\\\"95d9f671\\\"\"],  \"offset\": 0, \"limit\": 50}"
    curl -G localhost:8888/qcache/dataset/my-key --data-urlencode "q={\"select\": [[\"max\", \"baz\"]],  \"offset\": 0, \"limit\": 500000000000}"
 
+
+***************************
+Custom request HTTP headers
+***************************
+
+There are a couple of custom HTTP headers that can be used to control the behaviour of Q-Cache.
+
+Posting tables
+==============
+
+X-QCache-types
+--------------
+QCache will usually recognize the data types of submitted data automatically. There may be times when
+strings are mistaken for numbers because all of the data submitted for a column in a dataset happens
+to be in numbers.
+
+This header makes it possible to explicitly type column to be a string to. In the example below columns
+foo and bar are both typed to string.
+
+.. code::
+
+   X-QCache-types: foo=string;bar=string
+
+This header is only relevant when submitting data in CSV. With JSON the data has an unambiguous (well...)
+data type that is used by QCache.
+
+X-QCache-stand-in-columns
+-------------------------
+It may be that your submitted data varies a little from dataset to dataset with respect to the columns
+available in the dataset. You still want to be able to query the datasets in the same way and make
+some assumptions of which columns that are available. This header lets you do that.
+
+In the below example column foo will be set to 10 in case it does not exist in the submitted data. bar will
+be set to the value of the baz column if it is not submitted.
+
+.. code::
+
+   X-QCache-stand-in-columns: foo=10;bar=baz
+
+
+Query requests
+==============
+
+.. _query: http://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.query.html
+
+
+
+.. _filter-engines:
+
+X-QCache-filter-engine
+----------------------
+QCache currently implements two different filter engines (the code used to process the where clause).
+
+* numexpr - This is the original and currently default filter engine. It makes use of the dataframe _query function.
+            It may be more performant on really large datasets compared to the pandas engine below
+            (more measurements needed).
+* pandas - This is using standard pandas functions on the dataset to filter data.
+
+.. code::
+
+   X-QCache-filter-engine: pandas
+
+
+Query responses
+===============
+
+X-QCache-unsliced-length
+------------------------
+This header is added to responses and states how many rows the total filtered result was before applying
+any limits or offsets for pagination.
+
+.. code::
+
+   X-QCache-unsliced-length: 8324
+
+
 *************
 More examples
 *************
-Right now the documentation is very immature. Please look at the tests in the project or QCache-client_
-for further guidance. If you still have questions don't hesitate to contact the author or write an issue!
+Please look at the tests in the project or QCache-client_ for some further examples of queries.
+The unit tests in this project is also a good source for examples.
+
+If you still have questions don't hesitate to contact the author or write an issue!
 
 **********
 Statistics
