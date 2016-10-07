@@ -299,7 +299,7 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
 def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000,
         debug=False, certfile=None, basic_auth=None, default_filter_engine=FILTER_ENGINE_NUMEXPR):
     if basic_auth and not certfile:
-        print "SSL must be enbabled to use basic auth!"
+        print "SSL must be enabled to use basic auth!"
         return
 
     print("Starting on port {port}, max cache size {max_cache_size} bytes, max age {max_age} seconds,"
