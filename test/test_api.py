@@ -1,9 +1,13 @@
 # coding=utf-8
 import json
 import os
+
+import lz4 as lz4
 from tornado.httputil import url_concat
 from tornado.testing import AsyncHTTPTestCase
 from freezegun import freeze_time
+
+import qcache
 import qcache.app as app
 import csv
 from StringIO import StringIO
@@ -42,17 +46,25 @@ class SharedTest(AsyncHTTPTestCase):
         return app.make_app(url_prefix='', debug=True)
 
     def post_json(self, url, data, extra_headers=None):
-        body = to_json(data)
+        if not isinstance(data, basestring):
+            body = to_json(data)
+        else:
+            # Data already prepared by calling function
+            body = data
+
         headers = {'Content-Type': 'application/json'}
 
         if extra_headers:
             headers.update(extra_headers)
 
-        return self.fetch(url, method='POST', body=body, headers=headers)
+        return self.fetch(url, method='POST', body=body, headers=headers, use_gzip=False)
 
-    def query_json(self, url, query):
+    def query_json(self, url, query, extra_headers=None):
         url = url_concat(url, {'q': json.dumps(query)})
-        return self.fetch(url, headers={'Accept': 'application/json, text/csv'})
+        headers = {'Accept': 'application/json, text/csv'}
+        if extra_headers:
+            headers.update(extra_headers)
+        return self.fetch(url, headers=headers, use_gzip=False)
 
     def post_csv(self, url, data, types=None, extra_headers=None):
         headers = {'Content-Type': 'text/csv'}
@@ -63,14 +75,14 @@ class SharedTest(AsyncHTTPTestCase):
             headers.update(extra_headers)
 
         body = to_csv(data)
-        return self.fetch(url, method='POST', body=body, headers=headers)
+        return self.fetch(url, method='POST', body=body, headers=headers, use_gzip=False)
 
     def query_csv(self, url, query):
         url = url_concat(url, {'q': json.dumps(query)})
-        return self.fetch(url, headers={'Accept': 'text/csv, application/json'})
+        return self.fetch(url, headers={'Accept': 'text/csv, application/json'}, use_gzip=False)
 
     def get_statistics(self):
-        response = self.fetch('/statistics')
+        response = self.fetch('/statistics', use_gzip=False)
         assert response.code == 200
         return json.loads(response.body)
 
@@ -589,6 +601,72 @@ class TestDefaultColumns(SharedTest):
 
         response = self.query_json('/dataset/cba', {})
         assert json.loads(response.body) == [{'baz': 1, 'bar': 10}]
+
+
+class TestCompression(SharedTest):
+    def call_api_with_compression(self, accept_encoding, content_encoding, decoding_fn, encoding_fn, expected_encoding):
+        input_data = 10000 * [{'foo': 1, 'bar': 10}]
+        data = encoding_fn(to_json(input_data))
+
+        response = self.post_json('/dataset/abc', data, extra_headers={'Content-Encoding': content_encoding})
+        assert response.code == 201
+
+        response = self.query_json('/dataset/abc', query={}, extra_headers={'Accept-Encoding': accept_encoding})
+
+        assert response.code == 200
+        assert response.headers.get('Content-Encoding') == expected_encoding
+        assert json.loads(decoding_fn(response.body)) == input_data
+
+    def test_upload_gzip_accept_gzip(self):
+        self.call_api_with_compression(accept_encoding='gzip',
+                                       content_encoding='gzip',
+                                       decoding_fn=qcache.compression.gzip_loads,
+                                       encoding_fn=qcache.compression.gzip_dumps,
+                                       expected_encoding='gzip')
+
+    def test_upload_lz4_accept_lz4(self):
+        self.call_api_with_compression(accept_encoding='lz4',
+                                       content_encoding='lz4',
+                                       decoding_fn=lz4.loads,
+                                       encoding_fn=lz4.dumps,
+                                       expected_encoding='lz4')
+
+    def test_upload_lz4_accept_gzip(self):
+        self.call_api_with_compression(accept_encoding='lz4',
+                                       content_encoding='gzip',
+                                       decoding_fn=lz4.loads,
+                                       encoding_fn=qcache.compression.gzip_dumps,
+                                       expected_encoding='lz4')
+
+    def test_prefer_lz4_if_multiple_supported_encodings_exists(self):
+        self.call_api_with_compression(accept_encoding='compress,gzip,lz4',
+                                       content_encoding='gzip',
+                                       decoding_fn=lz4.loads,
+                                       encoding_fn=qcache.compression.gzip_dumps,
+                                       expected_encoding='lz4')
+
+    def test_unknown_accept_encoding_results_in_no_response_compression(self):
+        self.call_api_with_compression(accept_encoding='foo,bar',
+                                       content_encoding='lz4',
+                                       decoding_fn=lambda x: x,
+                                       encoding_fn=lz4.dumps,
+                                       expected_encoding=None)
+
+    def test_upload_with_unknown_encoding_results_in_400(self):
+        data = to_json([{'foo': 'bar'}])
+        response = self.post_json('/dataset/abc', data, extra_headers={'Content-Encoding': 'baz'})
+        assert response.code == 400
+        assert 'Unrecognized encoding' in response.body
+
+    def test_only_200_responses_are_compressed(self):
+        data = to_json([{'foo': 'bar'}])
+        response = self.post_json('/dataset/abc', data)
+        assert response.code == 201
+
+        response = self.query_json('/dataset/non_present_dataset', query={}, extra_headers={'Accept-Encoding': 'lz4'})
+        assert response.code == 404
+        assert response.headers.get('Content-Encoding') is None
+
 
 
 class SSLTestBase(AsyncHTTPTestCase):

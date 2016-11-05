@@ -11,6 +11,7 @@ REQUIRES = [
     'numpy==1.10.1',
     'pandas==0.19.0',
     'tornado==4.4.2',
+    'lz4==0.8.2'
 ]
 
 

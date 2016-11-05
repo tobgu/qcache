@@ -8,6 +8,7 @@ from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
 
 from qcache.dataset_cache import DatasetCache
+from qcache.compression import CompressedContentEncoding, decoded_body
 from qcache.qframe import MalformedQueryException, QFrame, FILTER_ENGINE_NUMEXPR
 from qcache.statistics import Statistics
 
@@ -17,6 +18,7 @@ class ResponseCode(object):
     CREATED = 201
 
     BAD_REQUEST = 400
+    UNAUTHORIZED = 401
     NOT_FOUND = 404
     NOT_ACCEPTABLE = 406
     UNSUPPORTED_MEDIA_TYPE = 415
@@ -46,7 +48,7 @@ def http_auth(handler_class):
     """
 
     def set_401(handler):
-        handler.set_status(401)
+        handler.set_status(ResponseCode.UNAUTHORIZED)
         handler.set_header('WWW-Authenticate', 'Basic realm=Restricted')
         handler._transforms = []
         handler.finish()
@@ -218,7 +220,7 @@ class DatasetHandler(RequestHandler):
 
     def post(self, dataset_key, optional_q):
         if optional_q:
-            q_dict = self.q_json_to_dict(self.request.body)
+            q_dict = self.q_json_to_dict(decoded_body(self.request))
             if q_dict is not None:
                 self.query(dataset_key, q_dict)
             return
@@ -229,16 +231,17 @@ class DatasetHandler(RequestHandler):
             del self.dataset_cache[dataset_key]
 
         content_type = self.content_type()
+        input_data = decoded_body(self.request)
         if content_type == CONTENT_TYPE_CSV:
-            durations_until_eviction = self.dataset_cache.ensure_free(len(self.request.body))
-            qf = QFrame.from_csv(self.request.body, column_types=self.dtypes(),
+            durations_until_eviction = self.dataset_cache.ensure_free(len(input_data))
+            qf = QFrame.from_csv(input_data, column_types=self.dtypes(),
                                  stand_in_columns=self.stand_in_columns())
         else:
             # This is a waste of CPU cycles, first the JSON decoder decodes all strings
             # from UTF-8 then we immediately encode them back into UTF-8. Couldn't
             # find an easy solution to this though.
-            durations_until_eviction = self.dataset_cache.ensure_free(len(self.request.body) / 2)
-            data = json.loads(self.request.body, cls=UTF8JSONDecoder)
+            durations_until_eviction = self.dataset_cache.ensure_free(len(input_data) / 2)
+            data = json.loads(input_data, cls=UTF8JSONDecoder)
             qf = QFrame.from_dicts(data, stand_in_columns=self.stand_in_columns())
 
         self.dataset_cache[dataset_key] = qf
@@ -293,7 +296,7 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
                            url(r"{url_prefix}/status".format(url_prefix=url_prefix), StatusHandler, {}, name="status"),
                            url(r"{url_prefix}/statistics".format(
                                url_prefix=url_prefix), StatisticsHandler, dict(stats=stats), name="statistics")
-                       ], debug=debug)
+                       ], debug=debug, transforms=[CompressedContentEncoding])
 
 
 def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000,
