@@ -1,9 +1,8 @@
 from __future__ import unicode_literals
 
 import numpy
-from pandas import DataFrame
 
-from qcache.qframe import COMPARISON_OPERATORS, JOINING_OPERATORS
+from qcache.qframe.constants import COMPARISON_OPERATORS, JOINING_OPERATORS, FILTER_ENGINE_PANDAS
 from qcache.qframe.common import assert_list, raise_malformed, is_quoted, unquote, assert_len
 from qcache.qframe.context import get_current_qframe
 
@@ -73,10 +72,10 @@ def _in_filter(df, q):
     _, col_name, args = q
 
     if isinstance(args, dict):
-        # Sub select
-        from qcache.qframe import _query, FILTER_ENGINE_PANDAS
+        # Sub select, circular dependency on query by nature so need to keep the import local
+        from qcache.qframe import query
         current_qframe = get_current_qframe()
-        sub_df, _ = _query(current_qframe.df, args, filter_engine=FILTER_ENGINE_PANDAS)
+        sub_df, _ = query(current_qframe.df, args, filter_engine=FILTER_ENGINE_PANDAS)
         args = sub_df[col_name].values
 
     if not isinstance(args, (list, numpy.ndarray)):

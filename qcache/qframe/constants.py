@@ -12,3 +12,5 @@ COMPARISON_OPERATORS = {'==': operator.eq,
                         '>': operator.gt,
                         '>=': operator.ge}
 
+FILTER_ENGINE_PANDAS = 'pandas'
+FILTER_ENGINE_NUMEXPR = 'numexpr'

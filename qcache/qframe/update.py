@@ -1,5 +1,5 @@
-from qcache.qframe import raise_malformed, COMPARISON_OPERATORS, is_quoted, unquote
-from qcache.qframe.common import assert_len
+from qcache.qframe.common import assert_len, raise_malformed, is_quoted, unquote
+from qcache.qframe.constants import COMPARISON_OPERATORS
 
 
 def _prepare_arg(df, arg):
