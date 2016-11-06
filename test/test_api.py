@@ -668,6 +668,21 @@ class TestCompression(SharedTest):
         assert response.headers.get('Content-Encoding') is None
 
 
+class TestStatistics(SharedTest):
+    def test_store_and_query_durations(self):
+        assert self.post_json('/dataset/abc', [{'foo': 123}]).code == 201
+        assert self.query_json('/dataset/abc', query={}).code == 200
+
+        stats = self.get_statistics()
+
+        assert len(stats['query_durations']) == 1
+        assert len(stats['store_durations']) == 1
+        assert len(stats['query_request_durations']) == 1
+        assert len(stats['store_request_durations']) == 1
+
+        assert stats['query_durations'][0] < stats['query_request_durations'][0]
+        assert stats['store_durations'][0] < stats['store_request_durations'][0]
+
 
 class SSLTestBase(AsyncHTTPTestCase):
     def get_app(self):

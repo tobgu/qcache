@@ -106,6 +106,13 @@ class DatasetHandler(RequestHandler):
         self.stats = stats
         self.default_filter_engine = default_filter_engine
 
+    def prepare(self):
+        self.request_start = time.time()
+
+    def on_finish(self):
+        if hasattr(self, 'operation'):
+            self.stats.append('{}_request_durations'.format(self.operation), time.time() - self.request_start)
+
     def accept_type(self):
         accept_types = [t.strip() for t in self.request.headers.get('Accept', CONTENT_TYPE_JSON).split(',')]
         for t in accept_types:
@@ -161,6 +168,7 @@ class DatasetHandler(RequestHandler):
 
     def query(self, dataset_key, q):
         t0 = time.time()
+        self.operation = 'query'
         accept_type = self.accept_type()
         if dataset_key not in self.dataset_cache:
             self.stats.inc('miss_count')
@@ -226,6 +234,7 @@ class DatasetHandler(RequestHandler):
             return
 
         t0 = time.time()
+        self.operation = 'store'
         if dataset_key in self.dataset_cache:
             self.stats.inc('replace_count')
             del self.dataset_cache[dataset_key]
@@ -328,3 +337,6 @@ def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=
 
 if __name__ == "__main__":
     run()
+
+# TODO: Support true query duration measurement using prepare and on_finish callbacks
+# TODO: Subquery support for "in"
