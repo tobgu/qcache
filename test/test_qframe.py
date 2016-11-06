@@ -263,23 +263,23 @@ def test_like_invalid_column_type(string_frame):
     2,
     3,bb""",  # null/None
 ])
-def test_sub_select(data):
+def test_sub_select(data, engine):
     frame = QFrame.from_csv(data)
 
     result = frame.query({'where': ['in', 'bar', {'where': ['==', 'foo', 2]}]},
-                         filter_engine='pandas')
+                         filter_engine=engine)
 
     assert_rows(result, [1, 2])
 
 
-def test_sub_select_in_column_missing_in_sub_select():
+def test_sub_select_in_column_missing_in_sub_select(engine):
     frame = QFrame.from_csv("""foo,bar
     1,aa""")
 
     with pytest.raises(MalformedQueryException):
         frame.query({'where': ['in', 'bar', {'select': ['foo'],
                                              'where': ['==', 'foo', 2]}]},
-                    filter_engine='pandas')
+                    filter_engine=engine)
 
 
 ############### Projections #######################

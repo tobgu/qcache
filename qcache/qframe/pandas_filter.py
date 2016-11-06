@@ -1,10 +1,7 @@
 from __future__ import unicode_literals
 
-import numpy
-
 from qcache.qframe.constants import COMPARISON_OPERATORS, JOINING_OPERATORS, FILTER_ENGINE_PANDAS
-from qcache.qframe.common import assert_list, raise_malformed, is_quoted, unquote, assert_len
-from qcache.qframe.context import get_current_qframe
+from qcache.qframe.common import assert_list, raise_malformed, is_quoted, unquote, assert_len, prepare_in_clause
 
 
 def _leaf_node(df, q):
@@ -68,19 +65,7 @@ def _join_filter(df, q):
 
 
 def _in_filter(df, q):
-    assert_len(q, 3)
-    _, col_name, args = q
-
-    if isinstance(args, dict):
-        # Sub select, circular dependency on query by nature so need to keep the import local
-        from qcache.qframe import query
-        current_qframe = get_current_qframe()
-        sub_df, _ = query(current_qframe.df, args, filter_engine=FILTER_ENGINE_PANDAS)
-        args = sub_df[col_name].values
-
-    if not isinstance(args, (list, numpy.ndarray)):
-        raise_malformed("Second argument must be a list", q)
-
+    col_name, args = prepare_in_clause(q, FILTER_ENGINE_PANDAS)
     return df[col_name].isin(args)
 
 

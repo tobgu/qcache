@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
-from qcache.qframe.common import raise_malformed, assert_list, assert_len
-from qcache.qframe.constants import JOINING_OPERATORS, COMPARISON_OPERATORS
+from qcache.qframe.common import raise_malformed, assert_list, assert_len, prepare_in_clause
+from qcache.qframe.constants import JOINING_OPERATORS, COMPARISON_OPERATORS, FILTER_ENGINE_NUMEXPR
 
 
 class Env(object):
@@ -57,10 +57,9 @@ class Filter(object):
             else:
                 result = ' {op} '.format(op=op).join(self._build_filter(x) for x in q[1:])
         elif op == 'in':
-            assert_len(q, 3)
-            _, arg1, arg2 = q
-            var_name = self._insert_in_env(arg2)
-            result = '{arg1} in @env.{var_name}'.format(arg1=arg1, var_name=var_name)
+            col_name, args = prepare_in_clause(q, FILTER_ENGINE_NUMEXPR)
+            var_name = self._insert_in_env(args)
+            result = '{col_name} in @env.{var_name}'.format(col_name=col_name, var_name=var_name)
         else:
             raise_malformed("Unknown operator", q)
 
