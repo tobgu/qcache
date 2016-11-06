@@ -28,12 +28,12 @@ ccc,,9,www"""
     return QFrame.from_csv(data)
 
 
-def assert_rows(qframe, rows):
+def assert_rows(qframe, rows, column='foo'):
     frame = qframe.df
     assert len(frame) == len(rows)
 
     for ix, row in enumerate(rows):
-        assert frame.iloc[ix]['foo'] == row
+        assert frame.iloc[ix][column] == row
 
 
 @pytest.mark.parametrize("operation, column, value, expected", [
@@ -244,6 +244,42 @@ def test_like_invalid_argument_type(string_frame):
 def test_like_invalid_column_type(string_frame):
     with pytest.raises(MalformedQueryException):
         string_frame.query({'where': ['like', "foo", "'%a%'"]}, filter_engine='pandas')
+
+
+############### Sub select ##################
+
+
+@pytest.mark.parametrize("data", [
+    """foo,bar
+    1,1
+    2,1
+    3,2""",   # Numbers
+    """foo,bar
+    1,aa
+    2,aa
+    3,bb""",  # Strings
+    """foo,bar
+    1,
+    2,
+    3,bb""",  # null/None
+])
+def test_sub_select(data):
+    frame = QFrame.from_csv(data)
+
+    result = frame.query({'where': ['in', 'bar', {'where': ['==', 'foo', 2]}]},
+                         filter_engine='pandas')
+
+    assert_rows(result, [1, 2])
+
+
+def test_sub_select_in_column_missing_in_sub_select():
+    frame = QFrame.from_csv("""foo,bar
+    1,aa""")
+
+    with pytest.raises(MalformedQueryException):
+        frame.query({'where': ['in', 'bar', {'select': ['foo'],
+                                             'where': ['==', 'foo', 2]}]},
+                    filter_engine='pandas')
 
 
 ############### Projections #######################

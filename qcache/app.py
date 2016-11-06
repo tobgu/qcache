@@ -83,7 +83,6 @@ def http_auth(handler_class):
     handler_class._execute = wrap_execute(handler_class._execute)
     return handler_class
 
-
 class UTF8JSONDecoder(json.JSONDecoder):
     def decode(self, json_string):
         obj = super(UTF8JSONDecoder, self).decode(json_string)

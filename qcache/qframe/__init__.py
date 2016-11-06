@@ -8,6 +8,7 @@ from pandas.computation.ops import UndefinedVariableError
 from pandas.core.groupby import DataFrameGroupBy
 
 from qcache.qframe.constants import COMPARISON_OPERATORS, JOINING_OPERATORS
+from qcache.qframe.context import set_current_qframe
 from qcache.qframe.numexpr_filter import numexpr_filter
 from qcache.qframe.pandas_filter import pandas_filter
 from qcache.qframe.common import assert_list, raise_malformed, assert_integer, MalformedQueryException, is_quoted, unquote
@@ -288,6 +289,7 @@ class QFrame(object):
         return QFrame(df)
 
     def query(self, q, filter_engine=None):
+        set_current_qframe(self)
         if 'update' in q:
             # In place operation, should it be?
             update_frame(self.df, q)
