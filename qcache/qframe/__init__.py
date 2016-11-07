@@ -51,8 +51,16 @@ class QFrame(object):
         return QFrame(df)
 
     @staticmethod
-    def from_dicts(d, stand_in_columns=None):
+    def from_dicts(d, column_types=None, stand_in_columns=None):
         df = DataFrame.from_records(d)
+
+        # Setting columns to categorials is slightly awkward from dicts
+        # than from CSV...
+        if column_types:
+            for name, type in column_types.items():
+                if type == 'category':
+                    df[name] = df[name].astype("category")
+
         _add_stand_in_columns(df, stand_in_columns=stand_in_columns)
         return QFrame(df)
 
@@ -82,6 +90,6 @@ class QFrame(object):
     def __len__(self):
         return len(self.df)
 
-    def byte_size(self):
+    def byte_size(self, deep=False):
         # Estimate of the number of bytes consumed by this QFrame
-        return self.df.memory_usage(index=True).sum()
+        return self.df.memory_usage(index=True, deep=deep).sum()

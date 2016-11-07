@@ -155,6 +155,8 @@ class DatasetHandler(RequestHandler):
         for column_name, type_name in types:
             if type_name == 'string':
                 dtypes[column_name] = 'object'
+            elif type_name == 'enum':
+                dtypes[column_name] = 'category'
             else:
                 raise HTTPError(ResponseCode.BAD_REQUEST,
                                 'Unrecognized type name "{type_name}" for column "{column_name}"'.format(

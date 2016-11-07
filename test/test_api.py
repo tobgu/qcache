@@ -412,16 +412,15 @@ class TestDatasetDelete(SharedTest):
 
 
 class TestColumnTyping(SharedTest):
+    def get(self, q, response_code=200):
+        response = self.query_json('/dataset/abc', q)
+        assert response.code == response_code
+        return json.loads(response.body)
+
     def test_type_int_to_string(self):
         # There is no code implemented in qcache to cover this test case. Rather
         # it documents the conversion from string to int in a query against int
         # column while there is no similar conversion from int to string.
-
-        def get(q, response_code=200):
-            response = self.query_json('/dataset/abc', q)
-            assert response.code == response_code
-            return json.loads(response.body)
-
         data = [
             {'some_key': '123456', 'another_key': 1111},
             {'some_key': 'abcdef', 'another_key': 2222}]
@@ -429,21 +428,21 @@ class TestColumnTyping(SharedTest):
         self.post_csv('/dataset/abc', data)
 
         # Querying on integer field
-        assert get({'where': ['==', 'another_key', 2222]}) == \
+        assert self.get({'where': ['==', 'another_key', 2222]}) == \
                [{'some_key': 'abcdef', 'another_key': 2222}]
-        assert get({'where': ['==', 'another_key', '2222']}) == \
+        assert self.get({'where': ['==', 'another_key', '2222']}) == \
                [{'some_key': 'abcdef', 'another_key': 2222}]
-        assert not get({'where': ['==', 'another_key', '"2222"']})
+        assert not self.get({'where': ['==', 'another_key', '"2222"']})
 
         # Querying on string field
-        assert not get({'where': ['==', 'some_key', 123456]})
-        assert not get({'where': ['==', 'some_key', '123456']})
-        assert get({'where': ['==', 'some_key', '"123456"']}) == \
+        assert not self.get({'where': ['==', 'some_key', 123456]})
+        assert not self.get({'where': ['==', 'some_key', '123456']})
+        assert self.get({'where': ['==', 'some_key', '"123456"']}) == \
                [{'some_key': '123456', 'another_key': 1111}]
 
         # Here abcdef is interpreted as another column. Since column abcdef
         # doesn't exist a 400, Bad request will be returned.
-        assert get({'where': ['==', 'some_key', 'abcdef']}, response_code=400)
+        assert self.get({'where': ['==', 'some_key', 'abcdef']}, response_code=400)
 
     def test_type_hint_string_on_column_with_only_integers(self):
         data = [
@@ -452,23 +451,28 @@ class TestColumnTyping(SharedTest):
 
         self.post_csv('/dataset/abc', data, types={'another_key': 'string'})
 
-        def get(q):
-            response = self.query_json('/dataset/abc', q)
-            return json.loads(response.body)
-
-        assert get({'where': ['==', 'another_key', '"2222"']}) == \
+        assert self.get({'where': ['==', 'another_key', '"2222"']}) == \
                [{'some_key': 'abcdef', 'another_key': '2222'}]
 
         # No matching item when querying by integer
-        assert not get({'where': ['==', 'another_key', 2222]})
+        assert not self.get({'where': ['==', 'another_key', 2222]})
 
     def test_type_hinting_with_invalid_type_results_in_bad_request(self):
-        # It's currently only possible to type hint strings.
+        # It's currently only possible to type hint strings and enums.
         # Is there ever a need for other type hints?
 
         data = [{'some_key': '123456', 'another_key': 1111}]
         response = self.post_csv('/dataset/abc', data, types={'another_key': 'int'})
         assert response.code == 400
+
+    def test_type_hinting_with_enum(self):
+        data = [{'some_key': 'aaa'}]
+        response = self.post_csv('/dataset/abc', data, types={'some_key': 'enum'})
+        assert response.code == 201
+
+        assert self.get({'where': ['==', 'some_key', '"aaa"']}) == [
+            {'some_key': 'aaa'}
+        ]
 
 
 class TestColumnTypingPandas(PandasMixin, TestColumnTyping):

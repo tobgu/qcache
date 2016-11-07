@@ -588,7 +588,58 @@ def test_alias_aggregation_from_sub_select(subselect_frame):
     ]
 
 
-#################  Update ######################
+################ Enums ########################
+
+@pytest.fixture
+def enum_data():
+    return """
+foo,bar
+ccc,10
+ccc,11
+bbb,15
+aaa,20"""
+
+
+@pytest.fixture
+def enum_frame(enum_data):
+    return QFrame.from_csv(enum_data, column_types={'foo': 'category'})
+
+
+def test_enum_basic_sorting(enum_frame, engine):
+    assert enum_frame.query({'order_by': ['foo']}, filter_engine=engine).to_dicts() == [
+        {'foo': 'aaa', 'bar': 20},
+        {'foo': 'bbb', 'bar': 15},
+        {'foo': 'ccc', 'bar': 10},
+        {'foo': 'ccc', 'bar': 11},
+    ]
+
+
+def test_enum_filter_by_equality(enum_frame, engine):
+    assert enum_frame.query({'where': ['==', 'foo', '"bbb"']}, filter_engine=engine).to_dicts() == [
+        {'foo': 'bbb', 'bar': 15},
+    ]
+
+
+def test_enum_filter_by_order_comparison_not_possible(enum_frame, engine):
+    with pytest.raises(MalformedQueryException):
+        enum_frame.query({'where': ['<', 'foo', '"bbb"']}, filter_engine=engine)
+
+
+def test_enum_size(enum_frame, enum_data):
+    # Space savings should be possible using categorials
+    # when multiple rows containing the same value exists.
+    frame = QFrame.from_csv(enum_data)
+    assert enum_frame.byte_size(deep=True) < frame.byte_size(deep=True)
+
+
+def test_enum_from_dicts(enum_frame):
+    cat_frame = QFrame.from_dicts(enum_frame.to_dicts(), column_types={'foo': 'category'})
+    frame = QFrame.from_dicts(enum_frame.to_dicts())
+
+    assert cat_frame.byte_size(deep=True) < frame.byte_size(deep=True)
+
+
+################# Update ######################
 
 
 def assert_column(column, frame, expected):

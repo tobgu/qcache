@@ -24,6 +24,8 @@ class Filter(object):
                 return dataframe.query(filter_str)
             except SyntaxError:
                 raise_malformed('Syntax error in where clause', filter_q)
+            except ValueError:
+                raise_malformed('Invalid type in comparison in where clause', filter_q)
 
         return dataframe
 
