@@ -629,14 +629,14 @@ def test_enum_size(enum_frame, enum_data):
     # Space savings should be possible using categorials
     # when multiple rows containing the same value exists.
     frame = QFrame.from_csv(enum_data)
-    assert enum_frame.byte_size(deep=True) < frame.byte_size(deep=True)
+    assert enum_frame.byte_size() < frame.byte_size()
 
 
 def test_enum_from_dicts(enum_frame):
     cat_frame = QFrame.from_dicts(enum_frame.to_dicts(), column_types={'foo': 'category'})
     frame = QFrame.from_dicts(enum_frame.to_dicts())
 
-    assert cat_frame.byte_size(deep=True) < frame.byte_size(deep=True)
+    assert cat_frame.byte_size() < frame.byte_size()
 
 
 ################# Update ######################

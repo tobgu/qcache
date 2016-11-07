@@ -325,7 +325,7 @@ class TestBitwiseQueriesPandas(PandasMixin, SharedTest):
 class TestCacheEvictionOnSize(SharedTest):
     def get_app(self):
         # A cache size of 200 is trimmed for the below test cases
-        just_enough_to_fit_smaller_values = 223
+        just_enough_to_fit_smaller_values = 315
         return app.make_app(url_prefix='', max_cache_size=just_enough_to_fit_smaller_values, debug=True)
 
     def test_evicts_entry_when_too_much_space_occupied(self):

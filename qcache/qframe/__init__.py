@@ -9,7 +9,8 @@ from qcache.qframe.common import unquote, MalformedQueryException
 from qcache.qframe.context import set_current_qframe
 from qcache.qframe.query import query
 from qcache.qframe.update import update_frame
-from qcache.qframe.constants import  FILTER_ENGINE_NUMEXPR
+from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR
+
 
 def _get_dtype(obj):
     try:
@@ -90,6 +91,6 @@ class QFrame(object):
     def __len__(self):
         return len(self.df)
 
-    def byte_size(self, deep=False):
+    def byte_size(self):
         # Estimate of the number of bytes consumed by this QFrame
-        return self.df.memory_usage(index=True, deep=deep).sum()
+        return self.df.memory_usage(index=True, deep=True).sum()
