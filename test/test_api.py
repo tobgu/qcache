@@ -540,7 +540,7 @@ class TestUseDifferentFilterEngineBasedOnHeader(SharedTest):
         assert response.code == 400
 
 
-class TestDefaultColumns(SharedTest):
+class TestStandInColumns(SharedTest):
     def test_stand_in_column_with_numeric_value(self):
         response = self.post_csv('/dataset/cba', [{'baz': 1, 'bar': 10}],
                                  extra_headers={'X-QCache-stand-in-columns': 'foo=13'})
@@ -605,6 +605,14 @@ class TestDefaultColumns(SharedTest):
 
         response = self.query_json('/dataset/cba', {})
         assert json.loads(response.body) == [{'baz': 1, 'bar': 10}]
+
+    def test_stand_in_columns_in_query(self):
+        response = self.post_csv('/dataset/cba', [{'foo': 1}],
+                                 extra_headers={'X-QCache-stand-in-columns': 'bar=13;baz=foo'})
+        assert response.code == 201
+
+        response = self.query_json('/dataset/cba', {})
+        assert json.loads(response.body) == [{'foo': 1, 'bar': 13, 'baz': 1}]
 
 
 class TestCompression(SharedTest):

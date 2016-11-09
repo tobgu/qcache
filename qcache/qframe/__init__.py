@@ -65,7 +65,8 @@ class QFrame(object):
         _add_stand_in_columns(df, stand_in_columns=stand_in_columns)
         return QFrame(df)
 
-    def query(self, q, filter_engine=None):
+    def query(self, q, filter_engine=None, stand_in_columns=None):
+        self.df = _add_stand_in_columns(self.df, stand_in_columns)
         set_current_qframe(self)
         if 'update' in q:
             # In place operation, should it be?

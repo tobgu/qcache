@@ -183,7 +183,7 @@ class DatasetHandler(RequestHandler):
         qf = self.dataset_cache[dataset_key]
         try:
             filter_engine = self.request.headers.get('X-QCache-filter-engine', None) or self.default_filter_engine
-            result_frame = qf.query(q, filter_engine=filter_engine)
+            result_frame = qf.query(q, filter_engine=filter_engine, stand_in_columns=self.stand_in_columns())
         except MalformedQueryException as e:
             self.write(json.dumps({'error': e.message}))
             self.set_status(ResponseCode.BAD_REQUEST)
