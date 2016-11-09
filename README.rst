@@ -289,8 +289,8 @@ Distinct has its own query clause unlike in SQL.
     "distinct": ["foo"]}
 
 
-Sub selects
-===========
+Sub queries using from
+======================
 Filter, transform and select your data in multiple steps.
 
 .. code:: python
@@ -298,6 +298,15 @@ Filter, transform and select your data in multiple steps.
     {"select": [["=", "foo_pct", ["*", 100, ["/", "foo", "bar"]]]],
      "from": {"select": ["foo", ["sum", "bar"]],
               "group_by": ["foo"]}}
+
+
+Sub queries using in
+====================
+Filter, transform and select your data in multiple steps.
+
+.. code:: python
+
+    {"where", ["in", "foo", {"where": ["==", "bar", 10]}]}
 
 
 All together now!
@@ -355,8 +364,21 @@ foo and bar are both typed to string.
 
    X-QCache-types: foo=string;bar=string
 
-This header is only relevant when submitting data in CSV. With JSON the data has an unambiguous (well...)
-data type that is used by QCache.
+Explicitly setting the type to string is only relevant when submitting data in CSV. With JSON the data
+has an unambiguous (well...) data type that is used by QCache.
+
+Enums
+-----
+The `X-QCache-types` header can also be used to specify columns with enum types.
+
+.. code::
+
+   X-QCache-types: foo=enum;bar=enum
+
+Enums are a good way to store low cardinality string columns space efficiently. They can be compared
+for equality and inequality but currently do not have a well defined order so filtering by
+larger than and less than is not possible for example.
+
 
 X-QCache-stand-in-columns
 -------------------------
@@ -367,6 +389,8 @@ some assumptions of which columns that are available. This header lets you do th
 In the below example column foo will be set to 10 in case it does not exist in the submitted data. bar will
 be set to the value of the baz column if it is not submitted.
 
+This header can be used in request both for storing and querying data.
+
 .. code::
 
    X-QCache-stand-in-columns: foo=10;bar=baz
@@ -374,16 +398,13 @@ be set to the value of the baz column if it is not submitted.
 
 Query requests
 ==============
-
 .. _query: http://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.query.html
-
-
-
 .. _filter-engines:
 
 X-QCache-filter-engine
 ----------------------
 QCache currently implements two different filter engines (the code used to process the where clause).
+
 
 * numexpr - This is the original and currently default filter engine. It makes use of the dataframe _query function.
             It may be more performant on really large datasets compared to the pandas engine below
@@ -432,6 +453,30 @@ Data encoding
 *************
 Just use UTF-8 when uploading data and in queries and you'll be fine. All responses are UTF-8.
 No other codecs are supported.
+
+****************
+Data compression
+****************
+QCache supports request and response body compression with LZ4 or GZIP using standard HTTP headers.
+
+In a query request set the following header to receive a compressed response:
+
+.. code::
+
+   Accept-Encoding: lz4,gzip
+
+
+The response will contain the following header indicating the used encoding
+
+.. code::
+
+   Content-Encoding: lz4
+
+LZ4 will always be preferred if present.
+
+The above header should also be set indicating the compression algorithm if you are
+submitting compressed data.
+
 
 **************************
 Performance & dimensioning

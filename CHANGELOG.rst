@@ -1,6 +1,18 @@
 Changelog
 =========
 
+0.7.0 (2016-11-09)
+------------------
+* Compression using LZ4 or GZIP in requests and responses (#3)
+* Sub queries in "in" filter (#7)
+* Enum type based on Pandas category type (#6)
+* Support for stand in columns in queries (#5)
+* Additional metrics/statistics for complete request duration for stores and queries
+* Update size estimates to do deep inspection of objects contained in dataframe. This should
+  be more accurate than the previous shallow inspection.
+* Update Pandas to 0.19.1
+* Update Tornado to 4.4.2
+
 0.6.1 (2016-09-18)
 ------------------
 * Fix packaging, the new qcache.qframe package was missing from the submitted package.
