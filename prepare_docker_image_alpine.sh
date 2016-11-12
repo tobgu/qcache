@@ -18,10 +18,11 @@ rm -rf numpy*
 rm -rf musl-*
 
 # Other pre-reqs
-pip install pandas==0.18.1
+pip install pandas==0.19.1
 pip install numexpr==2.6.0
-pip install tornado==4.3.0
+pip install tornado==4.4.2
 pip install docopt==0.6.2
+pip install lz4==0.8.2
 pip install six
 
 # Remove packages and stuff installed in the previous steps. These are not needed to run QCache.
