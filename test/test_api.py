@@ -607,11 +607,10 @@ class TestStandInColumns(SharedTest):
         assert json.loads(response.body) == [{'baz': 1, 'bar': 10}]
 
     def test_stand_in_columns_in_query(self):
-        response = self.post_csv('/dataset/cba', [{'foo': 1}],
-                                 extra_headers={'X-QCache-stand-in-columns': 'bar=13;baz=foo'})
+        response = self.post_csv('/dataset/cba', [{'foo': 1}])
         assert response.code == 201
 
-        response = self.query_json('/dataset/cba', {})
+        response = self.query_json('/dataset/cba', extra_headers={'X-QCache-stand-in-columns': 'bar=13;baz=foo'})
         assert json.loads(response.body) == [{'foo': 1, 'bar': 13, 'baz': 1}]
 
 
