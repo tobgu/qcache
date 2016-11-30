@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.7.1 (2016-11-30)
+------------------
+* Fix #9, df overwritten by mistake
+
 0.7.0 (2016-11-09)
 ------------------
 * Compression using LZ4 or GZIP in requests and responses (#3)
