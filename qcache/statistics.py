@@ -3,13 +3,6 @@ import json
 import time
 
 
-def encode_deque(obj):
-    if isinstance(obj, deque):
-        return list(obj)
-
-    raise TypeError(repr(obj) + " is not JSON serializable")
-
-
 class Statistics(object):
     def __init__(self, buffer_size):
         self.buffer_size = buffer_size
@@ -44,12 +37,12 @@ class Statistics(object):
         Create a statistics snapshot. This will reset the statistics.
         """
         snapshot = self.stats.copy()
+        for k, v in snapshot.items():
+            if isinstance(v, deque):
+                snapshot[k] = list(v)
+
         timestamp = time.time()
         snapshot['statistics_duration'] = timestamp - snapshot['since']
         del snapshot['since']
         self.reset()
         return snapshot
-
-    def json_snapshot(self):
-        # Custom serialization required for deque
-        return json.dumps(self.snapshot(), default=encode_deque)

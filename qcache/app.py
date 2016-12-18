@@ -282,12 +282,16 @@ class StatusHandler(RequestHandler):
 
 @http_auth
 class StatisticsHandler(RequestHandler):
-    def initialize(self, stats):
+    def initialize(self, dataset_cache, stats):
+        self.dataset_cache = dataset_cache
         self.stats = stats
 
     def get(self):
         self.set_header("Content-Type", "application/json; charset=utf-8")
-        self.write(self.stats.json_snapshot())
+        stats = self.stats.snapshot()
+        stats['dataset_count'] = len(self.dataset_cache)
+        stats['cache_size'] = self.dataset_cache.size
+        self.write(json.dumps(stats))
 
 
 def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_age=0,
@@ -297,15 +301,20 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
         auth_user, auth_password = basic_auth.split(':', 2)
 
     stats = Statistics(buffer_size=statistics_buffer_size)
+    cache = DatasetCache(max_size=max_cache_size, max_age=max_age)
     return Application([
                            url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)/?(q)?".format(url_prefix=url_prefix),
                                DatasetHandler,
-                               dict(dataset_cache=DatasetCache(max_size=max_cache_size, max_age=max_age),
-                                    state=AppState(), stats=stats, default_filter_engine=default_filter_engine),
+                               dict(dataset_cache=cache, state=AppState(), stats=stats, default_filter_engine=default_filter_engine),
                                name="dataset"),
-                           url(r"{url_prefix}/status".format(url_prefix=url_prefix), StatusHandler, {}, name="status"),
-                           url(r"{url_prefix}/statistics".format(
-                               url_prefix=url_prefix), StatisticsHandler, dict(stats=stats), name="statistics")
+                           url(r"{url_prefix}/status".format(url_prefix=url_prefix),
+                               StatusHandler,
+                               dict(),
+                               name="status"),
+                           url(r"{url_prefix}/statistics".format(url_prefix=url_prefix),
+                               StatisticsHandler,
+                               dict(dataset_cache=cache, stats=stats),
+                               name="statistics")
                        ], debug=debug, transforms=[CompressedContentEncoding])
 
 
