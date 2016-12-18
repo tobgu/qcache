@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.7.2 (2016-12-18)
+------------------
+* Fix #10 & #11, minor statistics improvements
+
 0.7.1 (2016-11-30)
 ------------------
 * Fix #9, df overwritten by mistake
