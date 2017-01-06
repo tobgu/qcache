@@ -347,6 +347,3 @@ def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=
 
 if __name__ == "__main__":
     run()
-
-# TODO: Support true query duration measurement using prepare and on_finish callbacks
-# TODO: Subquery support for "in"
