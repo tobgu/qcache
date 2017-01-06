@@ -49,7 +49,7 @@ Features
 - Expressive JSON-based query language with format and features similar to SQL SELECT. Queries
   are data that can easily be transformed or enriched.
 - Support for JSON or CSV input and output format
-- Performant query performance on tables as large as 10 x 1000000 cells out of the box
+- Performant queries on tables as large as 10 x 1000000 cells out of the box
 - No need for table definitions, tables are created dynamically based on the data inserted
 - Statistics about hit and miss count, query and insert performance and more available
   through HTTP API
@@ -302,7 +302,7 @@ Filter, transform and select your data in multiple steps.
 
 Sub queries using in
 ====================
-Filter, transform and select your data in multiple steps.
+Filter your data using the result of a query as filter input.
 
 .. code:: python
 
