@@ -62,7 +62,7 @@ Features
 ************
 Requirements
 ************
-Python 2.7 for now
+Python 2.7 (2.7.9+ if using TLS) for now
 
 
 ************

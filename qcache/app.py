@@ -1,6 +1,7 @@
 import base64
 import json
 import re
+import ssl
 import time
 import gc
 
@@ -318,8 +319,18 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
                        ], debug=debug, transforms=[CompressedContentEncoding])
 
 
+def ssl_config(certfile, cafile=None):
+    if certfile:
+        ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH, cafile=cafile)
+        ssl_context.load_cert_chain(certfile)
+        ssl_context.verify_mode = ssl.CERT_REQUIRED
+        return dict(ssl_options=ssl_context)
+
+    return {}
+
+
 def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000,
-        debug=False, certfile=None, basic_auth=None, default_filter_engine=FILTER_ENGINE_NUMEXPR):
+        debug=False, certfile=None, cafile=None, basic_auth=None, default_filter_engine=FILTER_ENGINE_NUMEXPR):
     if basic_auth and not certfile:
         print "SSL must be enabled to use basic auth!"
         return
@@ -337,10 +348,7 @@ def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=
         default_filter_engine=default_filter_engine)
 
     args = {}
-    if certfile:
-        args['ssl_options'] = {'certfile': certfile,
-                               'ciphers': 'ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+3DES:!aNULL:!MD5:!DSS'}  # noqa
-
+    args.update(ssl_config(certfile=certfile, cafile=cafile))
     app.listen(port, max_buffer_size=max_cache_size, **args)
     IOLoop.current().start()
 

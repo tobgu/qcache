@@ -3,6 +3,8 @@ import json
 import os
 
 import lz4 as lz4
+import ssl
+
 from tornado.httputil import url_concat
 from tornado.testing import AsyncHTTPTestCase
 from freezegun import freeze_time
