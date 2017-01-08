@@ -10,22 +10,22 @@ build_dir = os.path.join(docs_dir, '_build')
 
 @task
 def test():
-    run('python -m py.test -s -v -m "not benchmark"', pty=True)
+    run('python -m pytest -s -v -m "not benchmark"', pty=True)
 
 
 @task
 def test_limited(limit_by):
-    run('python -m py.test -s -v -m "not benchmark" -k{}'.format(limit_by), pty=True)
+    run('python -m pytest -s -v -m "not benchmark" -k{}'.format(limit_by), pty=True)
 
 
 @task
 def benchmark():
-    run('python -m py.test -s -v -m "benchmark"', pty=True)
+    run('python -m pytest -s -v -m "benchmark"', pty=True)
 
 
 @task
 def coverage():
-    run('python -m py.test --cov=qcache', pty=True)
+    run('python -m pytest --cov=qcache', pty=True)
     run('coverage report -m', pty=True)
     run('coverage html', pty=True)
 
