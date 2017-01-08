@@ -84,6 +84,7 @@ def http_auth(handler_class):
     handler_class._execute = wrap_execute(handler_class._execute)
     return handler_class
 
+
 class UTF8JSONDecoder(json.JSONDecoder):
     def decode(self, json_string):
         obj = super(UTF8JSONDecoder, self).decode(json_string)
@@ -321,10 +322,12 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
 
 def ssl_options(certfile, cafile=None):
     if certfile:
+        print "Enabling TLS"
         ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH, cafile=cafile)
         ssl_context.load_cert_chain(certfile)
 
         if cafile:
+            print "Enabling client certificate verification"
             ssl_context.verify_mode = ssl.CERT_REQUIRED
         return dict(ssl_options=ssl_context)
 
@@ -334,7 +337,7 @@ def ssl_options(certfile, cafile=None):
 def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000,
         debug=False, certfile=None, cafile=None, basic_auth=None, default_filter_engine=FILTER_ENGINE_NUMEXPR):
     if basic_auth and not certfile:
-        print "SSL must be enabled to use basic auth!"
+        print "TLS must be enabled to use basic auth!"
         return
 
     print("Starting on port {port}, max cache size {max_cache_size} bytes, max age {max_age} seconds,"

@@ -4,7 +4,8 @@
 
 Usage:
   qcache [-hd] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE] [--statistics-buffer-size=BUFFER_SIZE]
-         [--cert-file=PATH_TO_CERT] [--basic-auth=<USER>:<PASSWORD>] [--default-filter-engine=FILTER_ENGINE]
+         [--cert-file=PATH_TO_CERT] [--ca-file=PATH_TO_CA] [--basic-auth=<USER>:<PASSWORD>]
+         [--default-filter-engine=FILTER_ENGINE]
 
 Options:
   -h --help                     Show this screen
@@ -14,6 +15,7 @@ Options:
   -b BUFFER_SIZE --statistics-buffer-size=BUFFER_SIZE  Number of entries to store in statistics
                                                        ring buffer. [default: 1000]
   -c PATH_TO_CERT --cert-file=PATH_TO_CERT   Path to PEM file containing private key and certificate for SSL
+  -ca PATH_TO_CA --ca-file=PATH_TO_CA   Path to CA file, if provided client certificates will be checked against this ca
   -d --debug   Run in debug mode
   -ba <USER>:<PASSWORD> --basic-auth=<USER>:<PASSWORD>   Enable basic auth, requires that SSL is enabled.
   --default-filter-engine=FILTER_ENGINE   Which filter engine to use if none is specified in the query.
@@ -44,6 +46,7 @@ def main():
             statistics_buffer_size=int(args['--statistics-buffer-size']),
             debug=args['--debug'],
             certfile=args['--cert-file'],
+            cafile=args['--ca-file'],
             basic_auth=args['--basic-auth'],
             default_filter_engine=args['--default-filter-engine'])
 
