@@ -700,26 +700,57 @@ class TestStatistics(SharedTest):
 
 
 class SSLTestBase(AsyncHTTPTestCase):
+    TLS_DIR = os.path.join(os.path.dirname(__file__), '../tls/')
+
     def get_app(self):
         return app.make_app(url_prefix='', debug=True)
+
+    def get_protocol(self):
+        return 'https'
 
     def get_ssl_version(self):
         raise NotImplementedError()
 
     def get_httpserver_options(self):
-        # Dummy cert generated using (expires 2025):
-        # openssl req -new -x509 -days 3650 -nodes -out cert.pem -keyout cert.pem
-        test_dir = os.path.dirname(__file__)
-        return dict(ssl_options=dict(certfile=os.path.join(test_dir, '../tls/host.pem')))
+        # By default don't require client certificate. Override in subclasses where client
+        # certs are tested.
+        return app.ssl_options(certfile=self.TLS_DIR + 'host.pem')
+
+    def fetch(self, path, **kwargs):
+        if 'validate_cert' not in kwargs:
+            ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH,
+                                                     cafile=os.path.join(self.TLS_DIR, 'ca.pem'))
+
+            if 'client_cert' in kwargs:
+                ssl_context.load_cert_chain(kwargs['client_cert'])
+
+            kwargs['ssl_options'] = ssl_context
+
+        return super(SSLTestBase, self).fetch(path=path, **kwargs)
 
 
 class TestSSLServerWithSSL(SSLTestBase):
-    def get_protocol(self):
-        return 'https'
-
     def test_fetch_status(self):
+        response = self.fetch('/status')
+        assert response.code == 200
+
+    def test_fetch_status_no_cert_validation(self):
         response = self.fetch('/status', validate_cert=False)
         assert response.code == 200
+
+
+class TestSSLServerWithSSLClientCertVerification(SSLTestBase):
+    def get_httpserver_options(self):
+        return app.ssl_options(certfile=self.TLS_DIR + 'host.pem',
+                               cafile=self.TLS_DIR + 'ca.pem')
+
+    def test_fetch_status(self):
+        response = self.fetch('/status', client_cert=self.TLS_DIR + 'host.pem')
+        assert response.code == 200
+
+    def test_fetch_status_no_client_cert_supplied(self):
+        response = self.fetch('/status')
+        assert response.code == 599
 
 
 class TestSSLServerWithoutSSL(SSLTestBase):
@@ -727,7 +758,7 @@ class TestSSLServerWithoutSSL(SSLTestBase):
         return 'http'
 
     def test_fetch_status(self):
-        response = self.fetch('/status', validate_cert=False)
+        response = self.fetch('/status')
         assert response.code == 599
 
 
@@ -735,40 +766,37 @@ class TestSSLServerWithSSLAndBasicAuth(SSLTestBase):
     def get_app(self):
         return app.make_app(url_prefix='', debug=True, basic_auth='foo:bar')
 
-    def get_protocol(self):
-        return 'https'
-
     def test_fetch_status_correct_credentials(self):
-        response = self.fetch('/status', validate_cert=False, auth_username='foo', auth_password='bar')
+        response = self.fetch('/status', auth_username='foo', auth_password='bar')
         assert response.code == 200
 
     def test_fetch_status_incorrect_password(self):
-        response = self.fetch('/status', validate_cert=False, auth_username='foo', auth_password='ba')
+        response = self.fetch('/status', auth_username='foo', auth_password='ba')
         assert response.code == 401
 
     def test_fetch_status_unknown_user(self):
-        response = self.fetch('/status', validate_cert=False, auth_username='fo', auth_password='bar')
+        response = self.fetch('/status', auth_username='fo', auth_password='bar')
         assert response.code == 401
 
     def test_fetch_status_missing_credentials(self):
-        response = self.fetch('/status', validate_cert=False)
+        response = self.fetch('/status')
         assert response.code == 401
 
     def test_fetch_data_missing_credentials(self):
-        response = self.fetch('/dataset/XYZ', validate_cert=False)
+        response = self.fetch('/dataset/XYZ')
         assert response.code == 401
 
     def test_fetch_data_correct_credentials(self):
         url = url_concat('/dataset/XYZ', {'q': json.dumps('{}')})
-        response = self.fetch(url, validate_cert=False, auth_username='foo', auth_password='bar')
+        response = self.fetch(url, auth_username='foo', auth_password='bar')
         assert response.code == 404
 
     def test_fetch_statistics_missing_credentials(self):
-        response = self.fetch('/statistics', validate_cert=False)
+        response = self.fetch('/statistics')
         assert response.code == 401
 
     def test_fetch_statistics_correct_credentials(self):
-        response = self.fetch('/statistics', validate_cert=False, auth_username='foo', auth_password='bar')
+        response = self.fetch('/statistics', auth_username='foo', auth_password='bar')
         assert response.code == 200
 
         # Delete against a Q endpoint is a 404

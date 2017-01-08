@@ -319,11 +319,13 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
                        ], debug=debug, transforms=[CompressedContentEncoding])
 
 
-def ssl_config(certfile, cafile=None):
+def ssl_options(certfile, cafile=None):
     if certfile:
         ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH, cafile=cafile)
         ssl_context.load_cert_chain(certfile)
-        ssl_context.verify_mode = ssl.CERT_REQUIRED
+
+        if cafile:
+            ssl_context.verify_mode = ssl.CERT_REQUIRED
         return dict(ssl_options=ssl_context)
 
     return {}
@@ -348,7 +350,7 @@ def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=
         default_filter_engine=default_filter_engine)
 
     args = {}
-    args.update(ssl_config(certfile=certfile, cafile=cafile))
+    args.update(ssl_options(certfile=certfile, cafile=cafile))
     app.listen(port, max_buffer_size=max_cache_size, **args)
     IOLoop.current().start()
 
