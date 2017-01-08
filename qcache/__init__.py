@@ -25,7 +25,7 @@ Options:
 from docopt import docopt
 from qcache.app import run
 
-__version__ = "0.7.2"
+__version__ = "0.8.0"
 __author__ = "Tobias Gustafsson"
 __license__ = "MIT"
 
