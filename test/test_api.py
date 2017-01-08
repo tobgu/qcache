@@ -710,7 +710,7 @@ class SSLTestBase(AsyncHTTPTestCase):
         # Dummy cert generated using (expires 2025):
         # openssl req -new -x509 -days 3650 -nodes -out cert.pem -keyout cert.pem
         test_dir = os.path.dirname(__file__)
-        return dict(ssl_options=dict(certfile=os.path.join(test_dir, 'dummy-cert.pem')))
+        return dict(ssl_options=dict(certfile=os.path.join(test_dir, '../tls/host.pem')))
 
 
 class TestSSLServerWithSSL(SSLTestBase):
