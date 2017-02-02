@@ -3,7 +3,7 @@ from qcache.qframe.constants import COMPARISON_OPERATORS
 
 
 def _prepare_arg(df, arg):
-    if isinstance(arg, basestring):
+    if isinstance(arg, str):
         if is_quoted(arg):
             return unquote(arg)
 

@@ -1,7 +1,7 @@
 # coding=utf-8
 import json
 import os
-
+import io
 import lz4 as lz4
 import ssl
 
@@ -12,29 +12,28 @@ from freezegun import freeze_time
 import qcache
 import qcache.app as app
 import csv
-from StringIO import StringIO
 
 
 def to_json(data):
-    return json.dumps(data)
+    return json.dumps(data).encode('utf-8')
 
 
 def to_csv(data):
     if not data:
-        return ""
+        return b""
 
-    out = StringIO()
+    out = io.StringIO()
     writer = csv.DictWriter(out, data[0].keys())
     writer.writeheader()
 
     for entry in data:
         writer.writerow(entry)
 
-    return out.getvalue()
+    return out.getvalue().encode('utf-8')
 
 
 def from_csv(text):
-    input_data = StringIO(text)
+    input_data = io.BytesIO(text)
     return list(csv.DictReader(input_data))
 
 
@@ -48,7 +47,7 @@ class SharedTest(AsyncHTTPTestCase):
         return app.make_app(url_prefix='', debug=True)
 
     def post_json(self, url, data, extra_headers=None):
-        if not isinstance(data, basestring):
+        if not isinstance(data, (str, bytes)):
             body = to_json(data)
         else:
             # Data already prepared by calling function
@@ -189,34 +188,34 @@ class TestSlicing(SharedTest):
 
 class TestCharacterEncoding(SharedTest):
     def test_upload_json_query_json_unicode_characters(self):
-        response = self.post_json('/dataset/abc', [{'foo': u'Iñtërnâtiônàližætiøn'}, {'foo': 'qux'}])
+        response = self.post_json('/dataset/abc', [{'foo': 'Iñtërnâtiônàližætiøn'}, {'foo': 'qux'}])
         assert response.code == 201
 
-        response = self.query_json('/dataset/abc', {'where': ['==', 'foo', u'"Iñtërnâtiônàližætiøn"']})
+        response = self.query_json('/dataset/abc', {'where': ['==', 'foo', '"Iñtërnâtiônàližætiøn"']})
 
         assert response.code == 200
         response_data = json.loads(response.body)
         assert response_data == [{'foo': u'Iñtërnâtiônàližætiøn'}]
-        assert type(response_data[0]['foo']) is unicode
+        assert type(response_data[0]['foo']) is str
 
     def test_upload_csv_query_csv_unicode_characters_encoded_as_utf8(self):
-        response = self.post_csv('/dataset/abc', [{'foo': u'Iñtërnâtiônàližætiønåäö'.encode('utf-8')}, {'foo': 'qux'}])
+        response = self.post_csv('/dataset/abc', [{'foo': 'Iñtërnâtiônàližætiønåäö'.encode('utf-8')}, {'foo': 'qux'}])
         assert response.code == 201
 
-        response = self.query_csv('/dataset/abc', {'where': ['==', 'foo', u'"Iñtërnâtiônàližætiønåäö"']})
+        response = self.query_csv('/dataset/abc', {'where': ['==', 'foo', '"Iñtërnâtiônàližætiønåäö"']})
         assert response.code == 200
-        assert from_csv(response.body) == [{'foo': u'Iñtërnâtiônàližætiønåäö'.encode('utf-8')}]
+        assert from_csv(response.body) == [{'foo': 'Iñtërnâtiônàližætiønåäö'.encode('utf-8')}]
 
     def test_upload_csv_query_json_unicode_characters_encoded_as_utf8(self):
-        response = self.post_csv('/dataset/abc', [{'foo': u'Iñtërnâtiônàližætiønåäö'.encode('utf-8')}, {'foo': 'qux'}])
+        response = self.post_csv('/dataset/abc', [{'foo': 'Iñtërnâtiônàližætiønåäö'.encode('utf-8')}, {'foo': 'qux'}])
         assert response.code == 201
 
-        response = self.query_json('/dataset/abc', {'where': ['==', 'foo', u'"Iñtërnâtiônàližætiønåäö"']})
+        response = self.query_json('/dataset/abc', {'where': ['==', 'foo', '"Iñtërnâtiônàližætiønåäö"']})
 
         assert response.code == 200
         response_data = json.loads(response.body)
-        assert json.loads(response.body) == [{'foo': u'Iñtërnâtiônàližætiønåäö'}]
-        assert type(response_data[0]['foo']) is unicode
+        assert json.loads(response.body) == [{'foo': 'Iñtërnâtiônàližætiønåäö'}]
+        assert type(response_data[0]['foo']) is str
 
     def test_upload_invalid_content_type(self):
         response = self.fetch('/dataset/abc', method='POST', body='', headers={'Content-Type': 'text/html'})
@@ -671,7 +670,7 @@ class TestCompression(SharedTest):
         data = to_json([{'foo': 'bar'}])
         response = self.post_json('/dataset/abc', data, extra_headers={'Content-Encoding': 'baz'})
         assert response.code == 400
-        assert 'Unrecognized encoding' in response.body
+        assert b'Unrecognized encoding' in response.body
 
     def test_only_200_responses_are_compressed(self):
         data = to_json([{'foo': 'bar'}])

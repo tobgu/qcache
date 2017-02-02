@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import re
 
 from pandas import DataFrame
@@ -103,7 +102,7 @@ def _alias(dataframe, expressions):
     result_frame = dataframe
     for expression in expressions:
         destination, source = expression[1], expression[2]
-        if not isinstance(destination, basestring):
+        if not isinstance(destination, str):
             raise_malformed('Invalid alias, must be a string', expression)
 
         if not re.match(ALIAS_RE, destination):
@@ -111,6 +110,7 @@ def _alias(dataframe, expressions):
 
         eval_expr = _build_eval_expression(source)
         try:
+            print(destination, eval_expr)
             result_frame = result_frame.eval('{destination} = {expr}'.format(destination=destination, expr=eval_expr), inplace=False)
         except (SyntaxError, ValueError):
             raise_malformed('Unknown function in alias', source)
@@ -171,7 +171,7 @@ def _order_by(dataframe, order_q):
         return dataframe
 
     assert_list('order_by', order_q)
-    if not all(isinstance(c, basestring) for c in order_q):
+    if not all(isinstance(c, str) for c in order_q):
         raise_malformed("Invalid order by format", order_q)
 
     columns = [e[1:] if e.startswith('-') else e for e in order_q]
@@ -232,4 +232,4 @@ def query(dataframe, q, filter_engine=None):
         sliced_df = _do_slice(ordered_df, q.get('offset'), q.get('limit'))
         return sliced_df, len(ordered_df)
     except UndefinedVariableError as e:
-        raise MalformedQueryException(e.message)
+        raise MalformedQueryException(str(e))

@@ -38,7 +38,7 @@ def main():
 
     # Should be possible to solve this without casting to int...
     if '--version' in args:
-        print __version__
+        print(__version__)
     else:
         run(port=int(args['--port']),
             max_cache_size=int(args['--size']),

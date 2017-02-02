@@ -1,13 +1,13 @@
-from __future__ import unicode_literals
+import functools
 
 from qcache.qframe.constants import COMPARISON_OPERATORS, JOINING_OPERATORS, FILTER_ENGINE_PANDAS
 from qcache.qframe.common import assert_list, raise_malformed, is_quoted, unquote, assert_len, prepare_in_clause
 
 
 def _leaf_node(df, q):
-    if isinstance(q, basestring):
+    if isinstance(q, str):
         if is_quoted(q):
-            return q[1:-1].encode('utf-8')
+            return q[1:-1]
 
         try:
             return df[q]
@@ -20,7 +20,7 @@ def _leaf_node(df, q):
 def _bitwise_filter(df, q):
     assert_len(q, 3)
     op, column, arg = q
-    if not isinstance(arg, (int, long)):
+    if not isinstance(arg, int):
         raise_malformed('Invalid argument type, must be an integer:'.format(t=type(arg)), q)
 
     try:
@@ -58,8 +58,8 @@ def _join_filter(df, q):
         # Conjunctions and disjunctions with only one clause are OK
         result = _do_pandas_filter(df, q[1])
     else:
-        result = reduce(lambda l, r: JOINING_OPERATORS[q[0]](l, _do_pandas_filter(df, r)),
-                        q[2:], _do_pandas_filter(df, q[1]))
+        result = functools.reduce(lambda l, r: JOINING_OPERATORS[q[0]](l, _do_pandas_filter(df, r)),
+                                  q[2:], _do_pandas_filter(df, q[1]))
 
     return result
 

@@ -91,7 +91,7 @@ class UTF8JSONDecoder(json.JSONDecoder):
         assert isinstance(obj, list), "Must pass a list of objects"
 
         for r in obj:
-            yield {k: v.encode(encoding='utf-8') if isinstance(v, unicode) else v for k, v in r.items()}
+            yield {k: v.encode(encoding='utf-8') if isinstance(v, str) else v for k, v in r.items()}
 
 
 class AppState(object):
@@ -187,7 +187,7 @@ class DatasetHandler(RequestHandler):
             filter_engine = self.request.headers.get('X-QCache-filter-engine', None) or self.default_filter_engine
             result_frame = qf.query(q, filter_engine=filter_engine, stand_in_columns=self.stand_in_columns())
         except MalformedQueryException as e:
-            self.write(json.dumps({'error': e.message}))
+            self.write(json.dumps({'error': str(e)}))
             self.set_status(ResponseCode.BAD_REQUEST)
             return
 
@@ -322,12 +322,12 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
 
 def ssl_options(certfile, cafile=None):
     if certfile:
-        print "Enabling TLS"
+        print("Enabling TLS")
         ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH, cafile=cafile)
         ssl_context.load_cert_chain(certfile)
 
         if cafile:
-            print "Enabling client certificate verification"
+            print("Enabling client certificate verification")
             ssl_context.verify_mode = ssl.CERT_REQUIRED
         return dict(ssl_options=ssl_context)
 
@@ -337,7 +337,7 @@ def ssl_options(certfile, cafile=None):
 def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000,
         debug=False, certfile=None, cafile=None, basic_auth=None, default_filter_engine=FILTER_ENGINE_NUMEXPR):
     if basic_auth and not certfile:
-        print "TLS must be enabled to use basic auth!"
+        print("TLS must be enabled to use basic auth!")
         return
 
     print("Starting on port {port}, max cache size {max_cache_size} bytes, max age {max_age} seconds,"

@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from qcache.qframe.common import raise_malformed, assert_list, assert_len, prepare_in_clause
 from qcache.qframe.constants import JOINING_OPERATORS, COMPARISON_OPERATORS, FILTER_ENGINE_NUMEXPR
 
@@ -32,7 +30,7 @@ class Filter(object):
     def _build_filter(self, q):
         result = None
         if type(q) is not list:
-            return unicode(q)
+            return str(q)
 
         if not q:
             raise_malformed("Empty expression not allowed", q)

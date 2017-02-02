@@ -12,7 +12,7 @@ sed -i '/#define NPY_MAXARGS 32/c\#define NPY_MAXARGS 256' numpy/core/include/nu
 patch -p1 < ../musl-bd611864247f545397823f2b566f1361148bb2fd/dev-python/numpy/files/numpy-1.10.1-musl-fix.patch
 
 # Build, install, remove
-python setup.py build install
+pyth    on setup.py build install
 cd ..
 rm -rf numpy*
 rm -rf musl-*

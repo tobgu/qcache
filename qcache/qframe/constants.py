@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import operator
 
 JOINING_OPERATORS = {'&': operator.and_,

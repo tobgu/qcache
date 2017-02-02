@@ -1,5 +1,7 @@
 # coding=utf-8
 from contextlib import contextmanager
+
+import pandas
 import pytest
 import time
 
@@ -19,7 +21,7 @@ def engine(request):
 
 @pytest.fixture
 def basic_frame():
-    data = """
+    data = b"""
 foo,bar,baz,qux
 bbb,1.25,5,qqq
 aaa,3.25,7,qqq
@@ -141,7 +143,7 @@ def test_and_or_requires_at_least_one_argument(basic_frame, operation, engine):
 
 @pytest.fixture
 def bitwise_frame():
-    data = """foo,bar,baz
+    data = b"""foo,bar,baz
     1,1.5,abc
     2,1.5,def
     3,1.5,ghi
@@ -200,7 +202,7 @@ def test_bitwise_invalid_filter_length(bitwise_frame):
 
 @pytest.fixture
 def string_frame():
-    data = """foo,bar
+    data = b"""foo,bar
     1,abcd
     2,defg
     3,ghij
@@ -250,15 +252,15 @@ def test_like_invalid_column_type(string_frame):
 
 
 @pytest.mark.parametrize("data", [
-    """foo,bar
+    b"""foo,bar
     1,1
     2,1
     3,2""",   # Numbers
-    """foo,bar
+    b"""foo,bar
     1,aa
     2,aa
     3,bb""",  # Strings
-    """foo,bar
+    b"""foo,bar
     1,
     2,
     3,bb""",  # null/None
@@ -273,7 +275,7 @@ def test_sub_select(data, engine):
 
 
 def test_sub_select_in_column_missing_in_sub_select(engine):
-    frame = QFrame.from_csv("""foo,bar
+    frame = QFrame.from_csv(b"""foo,bar
     1,aa""")
 
     with pytest.raises(MalformedQueryException):
@@ -311,7 +313,7 @@ def test_select_distinct_with_columns(basic_frame):
 # TODO: More tests and error handling
 
 def test_basic_sum_aggregation(basic_frame):
-    expected = QFrame.from_csv("""
+    expected = QFrame.from_csv(b"""
 qux,baz
 www,9
 qqq,12""")
@@ -325,7 +327,7 @@ qqq,12""")
 
 
 def test_basic_count_aggregation(basic_frame):
-    expected = QFrame.from_csv("""
+    expected = QFrame.from_csv(b"""
 qux,baz
 qqq,2
 www,1""")
@@ -352,7 +354,7 @@ def test_missing_aggregation_function(basic_frame):
 
 
 def test_count_without_aggregation(basic_frame):
-    expected = QFrame.from_csv("""
+    expected = QFrame.from_csv(b"""
 count
 3""")
 
@@ -361,7 +363,7 @@ count
 
 
 def test_max_without_aggregation(basic_frame):
-    expected = QFrame.from_csv("""
+    expected = QFrame.from_csv(b"""
 baz
 9""")
 
@@ -400,10 +402,10 @@ def test_offset_and_limit(basic_frame):
 
 
 def test_unicode_content_from_csv():
-    data = u"""foo,bar
+    data = """foo,bar
 aaa,Iñtërnâtiônàližætiøn
 bbb,räksmörgås
-ccc,"""
+ccc,""".encode('utf-8')
 
     input_frame = QFrame.from_csv(data)
     frame = input_frame.query({'where': ["==", "bar", u"'räksmörgås'"]})
@@ -422,7 +424,7 @@ def test_unicode_content_from_dicts():
 
 @pytest.fixture
 def calculation_frame():
-    data = """
+    data = b"""
 foo,bar
 1,10
 1,11
@@ -494,7 +496,7 @@ def test_alias_with_single_argument_function(calculation_frame):
 
 @pytest.fixture
 def frame_with_zero():
-    data = """
+    data = b"""
 foo,bar
 1,0
 1,11"""
@@ -566,7 +568,7 @@ def test_cannot_mix_aggregation_functions_and_columns_without_group_by(calculati
 
 @pytest.fixture
 def subselect_frame():
-    data = """
+    data = b"""
 foo,bar
 1,10
 1,15
@@ -592,7 +594,7 @@ def test_alias_aggregation_from_sub_select(subselect_frame):
 
 @pytest.fixture
 def enum_data():
-    return """
+    return b"""
 foo,bar
 ccc,10
 ccc,11
@@ -710,10 +712,10 @@ def test_unknown_clause_in_query(basic_frame):
         basic_frame.query({'foo': []})
         assert False
     except MalformedQueryException as e:
-        print e.message
-        assert 'foo' in e.message
+        print(e)
+        assert 'foo' in str(e)
 
-
+from multiprocessing import Pipe
 ################### Performance ####################
 
 
@@ -735,6 +737,8 @@ def test_large_frame_csv(large_frame):
     with timeit('to_csv'):
         csv_string = large_frame.to_csv()
 
+    csv_string = csv_string.encode('utf-8')
+    print("CSV", len(csv_string))
     with timeit('from_csv'):
         QFrame.from_csv(csv_string)
 
@@ -746,14 +750,40 @@ def test_large_frame_csv(large_frame):
 @pytest.mark.benchmark
 def test_large_frame_json(large_frame):
     with timeit('to_json'):
-        large_frame.to_json()
+        result = large_frame.to_json()
 
-    # with timeit('from_json'):
-    #    QFrame.from_json(json_string)
+    print("JSON", len(result))
 
     # to_json duration: 0.792788982391 s
     # from_json duration: 3.07192707062 s, This implementation no longer exists
 
+@pytest.mark.benchmark
+def test_large_frame_hdf(large_frame):
+    pass
+#    with timeit('to_hdf'):
+#        large_frame.df.pickle()
+
+
+@pytest.mark.benchmark
+def test_large_frame_pickle(large_frame):
+    import pickle
+    with timeit('to_pickle'):
+        result = pickle.dumps(large_frame.df, pickle.HIGHEST_PROTOCOL)
+
+    print("Pickle", len(result))
+    with timeit('from_pickle'):
+        df = pickle.loads(result)
+
+    assert len(df) == len(large_frame)
+
+@pytest.mark.benchmark
+def test_large_frame_msgpack2(large_frame):
+    with timeit('to_msgpack'):
+        result = large_frame.df.to_msgpack()
+
+    print("Msgpack", len(result))
+    with timeit('to_msgpack'):
+        df = pandas.read_msgpack(result)
 
 @pytest.mark.benchmark
 @pytest.mark.skipif(True, reason="No implementation")

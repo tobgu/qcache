@@ -1,6 +1,4 @@
-from __future__ import unicode_literals
-
-from StringIO import StringIO
+import io
 
 import numpy
 from pandas import DataFrame, pandas
@@ -47,7 +45,7 @@ class QFrame(object):
 
     @staticmethod
     def from_csv(csv_string, column_types=None, stand_in_columns=None):
-        df = pandas.read_csv(StringIO(csv_string), dtype=column_types)
+        df = pandas.read_csv(io.BytesIO(csv_string), dtype=column_types)
         _add_stand_in_columns(df, stand_in_columns)
         return QFrame(df)
 

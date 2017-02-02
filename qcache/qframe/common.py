@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import numpy
 
 from qcache.qframe.context import get_current_qframe
@@ -14,7 +12,7 @@ def raise_malformed(message, q):
 
 
 def assert_integer(name, i):
-    if not isinstance(i, (int, long)):
+    if not isinstance(i, int):
         raise_malformed('Invalid type for {name}'.format(name=name), i)
 
 
