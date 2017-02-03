@@ -3,15 +3,14 @@ import json
 import re
 import ssl
 import time
-import gc
 
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
 
-from qcache.dataset_cache import DatasetCache
 from qcache.compression import CompressedContentEncoding, decoded_body
-from qcache.qframe import MalformedQueryException, QFrame, FILTER_ENGINE_NUMEXPR
-from qcache.statistics import Statistics
+from qcache.constants import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV
+from qcache.in_process_cache import InProcessCache, QueryResult, InsertResult
+from qcache.qframe import FILTER_ENGINE_NUMEXPR
 
 
 class ResponseCode(object):
@@ -24,9 +23,6 @@ class ResponseCode(object):
     NOT_ACCEPTABLE = 406
     UNSUPPORTED_MEDIA_TYPE = 415
 
-
-CONTENT_TYPE_JSON = 'application/json'
-CONTENT_TYPE_CSV = 'text/csv'
 ACCEPTED_TYPES = {CONTENT_TYPE_JSON, CONTENT_TYPE_CSV}  # text/*, */*?
 CHARSET_REGEX = re.compile('charset=([A-Za-z0-9_-]+)')
 
@@ -101,18 +97,11 @@ class AppState(object):
 
 @http_auth
 class DatasetHandler(RequestHandler):
-    def initialize(self, dataset_cache, state, stats, default_filter_engine):
-        self.dataset_cache = dataset_cache
-        self.state = state
-        self.stats = stats
-        self.default_filter_engine = default_filter_engine
+    def initialize(self, cache):
+        self.cache = cache
 
     def prepare(self):
         self.request_start = time.time()
-
-    def on_finish(self):
-        if hasattr(self, 'operation'):
-            self.stats.append('{}_request_durations'.format(self.operation), time.time() - self.request_start)
 
     def accept_type(self):
         accept_types = [t.strip() for t in self.request.headers.get('Accept', CONTENT_TYPE_JSON).split(',')]
@@ -170,37 +159,24 @@ class DatasetHandler(RequestHandler):
         return self.header_to_key_values('X-QCache-stand-in-columns')
 
     def query(self, dataset_key, q):
-        t0 = time.time()
-        self.operation = 'query'
         accept_type = self.accept_type()
-        if dataset_key not in self.dataset_cache:
-            self.stats.inc('miss_count')
-            raise HTTPError(ResponseCode.NOT_FOUND)
+        result = self.cache.query(dataset_key=dataset_key,
+                                  q=q,
+                                  filter_engine=self.request.headers.get('X-QCache-filter-engine', None),
+                                  stand_in_columns=self.stand_in_columns(),
+                                  accept_type=accept_type)
 
-        if self.dataset_cache.evict_if_too_old(dataset_key):
-            self.stats.inc('miss_count')
-            self.stats.inc('age_evict_count')
+        if result.status == QueryResult.STATUS_SUCCESS:
+            self.set_header("Content-Type", "{content_type}; charset=utf-8".format(content_type=result.content_type))
+            self.set_header("X-QCache-unsliced-length", result.unsliced_length)
+            self.write(result.data)
+        elif result.status == QueryResult.STATUS_NOT_FOUND:
             raise HTTPError(ResponseCode.NOT_FOUND)
-
-        qf = self.dataset_cache[dataset_key]
-        try:
-            filter_engine = self.request.headers.get('X-QCache-filter-engine', None) or self.default_filter_engine
-            result_frame = qf.query(q, filter_engine=filter_engine, stand_in_columns=self.stand_in_columns())
-        except MalformedQueryException as e:
-            self.write(json.dumps({'error': e.message}))
+        elif result.status == QueryResult.STATUS_MALFORMED_QUERY:
+            self.write(json.dumps({'error': result.data}))
             self.set_status(ResponseCode.BAD_REQUEST)
-            return
-
-        self.set_header("Content-Type", "{content_type}; charset=utf-8".format(content_type=accept_type))
-        self.set_header("X-QCache-unsliced-length", result_frame.unsliced_df_len)
-        if accept_type == CONTENT_TYPE_CSV:
-            self.write(result_frame.to_csv())
         else:
-            self.write(result_frame.to_json())
-
-        self.post_query_processing()
-        self.stats.inc('hit_count')
-        self.stats.append('query_durations', time.time() - t0)
+            raise Exception("Unknown query status: {}".format(result.status))
 
     def q_json_to_dict(self, q_json):
         try:
@@ -221,14 +197,6 @@ class DatasetHandler(RequestHandler):
         if q_dict is not None:
             self.query(dataset_key, q_dict)
 
-    def post_query_processing(self):
-        if self.state.query_count % 10 == 0:
-            # Run a collect every now and then. It reduces the process memory consumption
-            # considerably but always doing it will impact query performance negatively.
-            gc.collect()
-
-        self.state.query_count += 1
-
     def post(self, dataset_key, optional_q):
         if optional_q:
             q_dict = self.q_json_to_dict(decoded_body(self.request))
@@ -236,43 +204,24 @@ class DatasetHandler(RequestHandler):
                 self.query(dataset_key, q_dict)
             return
 
-        t0 = time.time()
-        self.operation = 'store'
-        if dataset_key in self.dataset_cache:
-            self.stats.inc('replace_count')
-            del self.dataset_cache[dataset_key]
+        result = self.cache.insert(dataset_key=dataset_key,
+                                   data=decoded_body(self.request),
+                                   content_type=self.content_type(),
+                                   data_types=self.dtypes(),
+                                   stand_in_columns=self.stand_in_columns())
 
-        content_type = self.content_type()
-        input_data = decoded_body(self.request)
-        if content_type == CONTENT_TYPE_CSV:
-            durations_until_eviction = self.dataset_cache.ensure_free(len(input_data))
-            qf = QFrame.from_csv(input_data, column_types=self.dtypes(),
-                                 stand_in_columns=self.stand_in_columns())
+        if result.status == InsertResult.STATUS_SUCCESS:
+            self.set_status(ResponseCode.CREATED)
+            self.write("")
         else:
-            # This is a waste of CPU cycles, first the JSON decoder decodes all strings
-            # from UTF-8 then we immediately encode them back into UTF-8. Couldn't
-            # find an easy solution to this though.
-            durations_until_eviction = self.dataset_cache.ensure_free(len(input_data) / 2)
-            data = json.loads(input_data, cls=UTF8JSONDecoder)
-            qf = QFrame.from_dicts(data, stand_in_columns=self.stand_in_columns())
-
-        self.dataset_cache[dataset_key] = qf
-        self.set_status(ResponseCode.CREATED)
-        self.stats.inc('size_evict_count', count=len(durations_until_eviction))
-        self.stats.inc('store_count')
-        self.stats.append('store_row_counts', len(qf))
-        self.stats.append('store_durations', time.time() - t0)
-        self.stats.extend('durations_until_eviction', durations_until_eviction)
-        self.write("")
+            raise Exception("Unknown insert status: {}".format(result.status))
 
     def delete(self, dataset_key, optional_q):
         if optional_q:
             # There should not be a q parameter for the delete method
             raise HTTPError(ResponseCode.NOT_FOUND)
 
-        if dataset_key in self.dataset_cache:
-            del self.dataset_cache[dataset_key]
-
+        self.cache.delete(dataset_key)
         self.write("")
 
 
@@ -284,16 +233,12 @@ class StatusHandler(RequestHandler):
 
 @http_auth
 class StatisticsHandler(RequestHandler):
-    def initialize(self, dataset_cache, stats):
-        self.dataset_cache = dataset_cache
-        self.stats = stats
+    def initialize(self, cache):
+        self.cache = cache
 
     def get(self):
         self.set_header("Content-Type", "application/json; charset=utf-8")
-        stats = self.stats.snapshot()
-        stats['dataset_count'] = len(self.dataset_cache)
-        stats['cache_size'] = self.dataset_cache.size
-        self.write(json.dumps(stats))
+        self.write(json.dumps(self.cache.statistics()))
 
 
 def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_age=0,
@@ -302,12 +247,14 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
         global auth_user, auth_password
         auth_user, auth_password = basic_auth.split(':', 2)
 
-    stats = Statistics(buffer_size=statistics_buffer_size)
-    cache = DatasetCache(max_size=max_cache_size, max_age=max_age)
+    cache = InProcessCache(statistics_buffer_size=statistics_buffer_size,
+                           max_cache_size=max_cache_size,
+                           max_age=max_age,
+                           default_filter_engine=default_filter_engine)
     return Application([
                            url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)/?(q)?".format(url_prefix=url_prefix),
                                DatasetHandler,
-                               dict(dataset_cache=cache, state=AppState(), stats=stats, default_filter_engine=default_filter_engine),
+                               dict(cache=cache),
                                name="dataset"),
                            url(r"{url_prefix}/status".format(url_prefix=url_prefix),
                                StatusHandler,
@@ -315,7 +262,7 @@ def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_a
                                name="status"),
                            url(r"{url_prefix}/statistics".format(url_prefix=url_prefix),
                                StatisticsHandler,
-                               dict(dataset_cache=cache, stats=stats),
+                               dict(cache=cache),
                                name="statistics")
                        ], debug=debug, transforms=[CompressedContentEncoding])
 
