@@ -11,6 +11,8 @@ TODO
   communication works.
 - Add measurements and metrics to the different parts of the processing that are returned as
   a header in the response.
+- Make a test adding pickling and de-pickling of dataframes in QFrame to verify that
+  all tests still pass.
 
 
 

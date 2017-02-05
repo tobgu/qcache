@@ -1,6 +1,9 @@
 from time import time
 
 
+# TODO: Rename this file and classes to "Map"s instead to avoid confusion with
+#       the new higher level caches?
+
 class CacheItem(object):
     def __init__(self, qframe):
         self.creation_time = time()
