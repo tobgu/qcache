@@ -1,10 +1,11 @@
 import json
+import random
+import string
 from contextlib import contextmanager
 
 import pytest
-import time
 
-from qcache.cache_common import QueryResult, InsertResult
+from qcache.cache_common import QueryResult, InsertResult, DeleteResult
 from qcache.constants import CONTENT_TYPE_CSV, CONTENT_TYPE_JSON
 from qcache.in_process_cache import InProcessCache
 from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR
@@ -50,9 +51,13 @@ def cache_type(request):
     return request.param
 
 
+def random_key():
+    return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+
+
 def test_insert_query_delete(cache_type, basic_csv_frame):
     with sharded_cache(cache_type) as cache:
-        key = 'foo'
+        key = random_key()
         limit = 2
         insert_result = cache.insert(dataset_key=key,
                                      data=basic_csv_frame,
@@ -86,6 +91,35 @@ def test_insert_query_delete(cache_type, basic_csv_frame):
                            u'foo': u'aaa',
                            u'index': u'2',
                            u'qux': u'qqq'}]
+
+
+def test_insert_delete(cache_type, basic_csv_frame):
+    with sharded_cache(cache_type) as cache:
+        key = random_key()
+        limit = 2
+        insert_result = cache.insert(dataset_key=key,
+                                     data=basic_csv_frame,
+                                     content_type=CONTENT_TYPE_CSV,
+                                     data_types={'index': 'string'},
+                                     stand_in_columns=[('extra_insert', '42')])
+        assert insert_result.status == InsertResult.STATUS_SUCCESS
+
+        query_result = cache.query(dataset_key=key,
+                                   q={'limit': limit},
+                                   filter_engine=None,
+                                   stand_in_columns=[('extra_query', '24')],
+                                   accept_type=CONTENT_TYPE_JSON)
+        assert query_result.status == QueryResult.STATUS_SUCCESS
+
+        delete_result = cache.delete(dataset_key=key)
+        assert delete_result.status == DeleteResult.STATUS_SUCCESS
+
+        query_result = cache.query(dataset_key=key,
+                                   q={},
+                                   filter_engine=None,
+                                   stand_in_columns=[],
+                                   accept_type=CONTENT_TYPE_JSON)
+        assert query_result.status == QueryResult.STATUS_NOT_FOUND
 
 # - Respects input parameters to all functions
 # - Query when frame does not exist

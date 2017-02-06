@@ -34,3 +34,10 @@ class InsertResult(object):
 
         self.status = status
         self.insert_stats = insert_stats
+
+
+class DeleteResult(object):
+    STATUS_SUCCESS = "success"
+
+    def __init__(self, status):
+        self.status = status

@@ -14,7 +14,7 @@ from qcache.constants import CONTENT_TYPE_CSV, CONTENT_TYPE_JSON
 from qcache.dataset_cache import DatasetCache
 from qcache.qframe import MalformedQueryException, QFrame
 from qcache.statistics import Statistics
-from qcache.cache_common import QueryResult, InsertResult, UTF8JSONDecoder
+from qcache.cache_common import QueryResult, InsertResult, UTF8JSONDecoder, DeleteResult
 
 STOP_COMMAND = "stop"
 
@@ -39,13 +39,15 @@ class InsertCommand(object):
         self.qf = qf
 
     def execute(self, worker):
-        return worker.insert(dataset_key=self.dataset_key,
-                             qf=self.qf)
+        return worker.insert(dataset_key=self.dataset_key, qf=self.qf)
 
 
 class DeleteCommand(object):
     def __init__(self, dataset_key):
         self.dataset_key = dataset_key
+
+    def execute(self, worker):
+        return worker.delete(self.dataset_key)
 
 
 class StatsCommand(object):
@@ -109,9 +111,9 @@ class CacheShard(object):
 
         return InsertResult(status=InsertResult.STATUS_SUCCESS)
 
-    def delete(self, delete_command):
-        if delete_command.dataset_key in self.dataset_cache:
-            del self.dataset_cache[delete_command.dataset_key]
+    def delete(self, dataset_key):
+        self.dataset_cache.delete(dataset_key)
+        return DeleteResult(status=DeleteResult.STATUS_SUCCESS)
 
     def statistics(self):
         stats = self.stats.snapshot()
@@ -224,13 +226,10 @@ class ShardedCache(object):
             qf = QFrame.from_dicts(data, stand_in_columns=stand_in_columns)
 
         command = InsertCommand(dataset_key=dataset_key, qf=qf)
-        result = self.run_command(command)
-        return result
+        return self.run_command(command)
 
     def delete(self, dataset_key):
-        # TODO
-        # Send delete command to appropriate cache
-        pass
+        return self.run_command(DeleteCommand(dataset_key=dataset_key))
 
     def statistics(self):
         # TODO

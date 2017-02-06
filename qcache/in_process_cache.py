@@ -2,7 +2,7 @@ import json
 import time
 import gc
 
-from qcache.cache_common import QueryResult, InsertResult, UTF8JSONDecoder
+from qcache.cache_common import QueryResult, InsertResult, UTF8JSONDecoder, DeleteResult
 from qcache.constants import CONTENT_TYPE_CSV
 from qcache.dataset_cache import DatasetCache
 from qcache.qframe import MalformedQueryException, QFrame
@@ -57,7 +57,6 @@ class InProcessCache(object):
         return result
 
     def insert(self, dataset_key, data, content_type, data_types, stand_in_columns):
-        # TODO: Move unpacking to in here to be able to kill the buffer once used?
         t0 = time.time()
         if dataset_key in self.dataset_cache:
             self.stats.inc('replace_count')
@@ -88,8 +87,8 @@ class InProcessCache(object):
         return InsertResult(status=InsertResult.STATUS_SUCCESS)
 
     def delete(self, dataset_key):
-        if dataset_key in self.dataset_cache:
-            del self.dataset_cache[dataset_key]
+        self.dataset_cache.delete(dataset_key)
+        return DeleteResult(status=DeleteResult.STATUS_SUCCESS)
 
     def statistics(self):
         stats = self.stats.snapshot()

@@ -62,6 +62,10 @@ class DatasetCache(object):
     def __len__(self):
         return len(self._cache_dict)
 
+    def delete(self, key):
+        if key in self:
+            del self[key]
+
     def ensure_free(self, byte_count):
         """
         :return: A list of durations in seconds that the dataset spent in the cache before
