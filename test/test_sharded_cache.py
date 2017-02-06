@@ -8,6 +8,7 @@ import pytest
 from qcache.cache_common import QueryResult, InsertResult, DeleteResult
 from qcache.constants import CONTENT_TYPE_CSV, CONTENT_TYPE_JSON
 from qcache.in_process_cache import InProcessCache
+from qcache.qframe import QFrame
 from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR
 
 from qcache.sharded_cache import ShardedCache
@@ -121,8 +122,48 @@ def test_insert_delete(cache_type, basic_csv_frame):
                                    accept_type=CONTENT_TYPE_JSON)
         assert query_result.status == QueryResult.STATUS_NOT_FOUND
 
-# - Respects input parameters to all functions
-# - Query when frame does not exist
-# - Statistics
-#    * Per request
-#    * Aggregated
+
+@pytest.fixture
+def large_csv_frame():
+    d = [{'aaa': random.randint(0, 10000000), 'bbb': random_key(), 'ccc': random.random() * 100000} for _ in range(100)]
+    return QFrame.from_dicts(d).to_csv()
+
+
+def test_statistics(cache_type, large_csv_frame):
+    with sharded_cache(cache_type, max_cache_size=100000) as cache:
+        for _ in range(100):
+            key = random_key()
+            insert_result = cache.insert(dataset_key=key,
+                                         data=large_csv_frame,
+                                         content_type=CONTENT_TYPE_CSV,
+                                         data_types={'index': 'string'},
+                                         stand_in_columns=[('extra_insert', '42')])
+            assert insert_result.status == InsertResult.STATUS_SUCCESS
+
+            query_result = cache.query(dataset_key=key,
+                                       q={'limit': 200},
+                                       filter_engine=None,
+                                       stand_in_columns=[('extra_query', '24')],
+                                       accept_type=CONTENT_TYPE_JSON)
+            assert query_result.status == QueryResult.STATUS_SUCCESS
+
+        stats = cache.statistics()
+        assert set(stats) == {'cache_size',
+                              'cache_size',
+                              'dataset_count',
+                              'durations_until_eviction',
+                              'hit_count',
+                              'query_durations',
+                              'query_request_durations',
+                              'size_evict_count',
+                              'statistics_buffer_size',
+                              'statistics_duration',
+                              'store_count',
+                              'store_durations',
+                              'store_request_durations',
+                              'store_row_counts'}
+
+        assert stats['cache_size'] >= 90000
+        assert stats['dataset_count'] >= 10
+        assert len(stats['store_durations']) == 100
+        assert len(stats['durations_until_eviction']) >= 80

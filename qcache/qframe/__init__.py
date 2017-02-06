@@ -39,11 +39,12 @@ class QFrame(object):
     """
     Thin wrapper around a Pandas dataframe.
     """
-    __slots__ = ('df', 'unsliced_df_len')
+    __slots__ = ('df', 'unsliced_df_len', '_byte_size')
 
     def __init__(self, pandas_df, unsliced_df_len=None):
         self.unsliced_df_len = len(pandas_df) if unsliced_df_len is None else unsliced_df_len
         self.df = pandas_df
+        self._byte_size = None
 
     @staticmethod
     def from_csv(csv_string, column_types=None, stand_in_columns=None):
@@ -93,5 +94,8 @@ class QFrame(object):
         return len(self.df)
 
     def byte_size(self):
-        # Estimate of the number of bytes consumed by this QFrame
-        return self.df.memory_usage(index=True, deep=True).sum()
+        if self._byte_size is None:
+            # Estimate of the number of bytes consumed by this QFrame
+            self._byte_size = self.df.memory_usage(index=True, deep=True).sum()
+
+        return self._byte_size

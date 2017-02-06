@@ -1,7 +1,9 @@
+import collections
 import json
 import time
 
 import gc
+import traceback
 from multiprocessing import Process
 import cPickle as pickle
 
@@ -51,7 +53,8 @@ class DeleteCommand(object):
 
 
 class StatsCommand(object):
-    pass
+    def execute(self, worker):
+        return worker.statistics()
 
 
 class CacheShard(object):
@@ -97,7 +100,7 @@ class CacheShard(object):
             self.stats.inc('replace_count')
             del self.dataset_cache[dataset_key]
 
-        durations_until_eviction = self.dataset_cache.ensure_free(len(qf))
+        durations_until_eviction = self.dataset_cache.ensure_free(qf.byte_size())
         self.dataset_cache[dataset_key] = qf
         self.stats.inc('size_evict_count', count=len(durations_until_eviction))
         self.stats.inc('store_count')
@@ -131,15 +134,14 @@ def shard_process(ipc_address, statistics_buffer_size, max_cache_size, max_age):
                         max_age=max_age)
     while True:
         try:
-            command = receive_object(socket)
+            command, t0 = receive_object(socket)
             if command == STOP_COMMAND:
-                print("Terminating shard process")
                 return
 
             result = command.execute(worker)
             send_object(socket, result)
         except Exception as e:
-            print(e)
+            traceback.print_exc(e)
             # TODO: Formalize this...
             send_object(socket, "error")
 
@@ -175,9 +177,10 @@ def send_object(socket, obj):
 
 def receive_object(socket):
     msg = socket.recv(copy=False)
+    t0 = time.time()
     serialized_command = blosc.decompress(msg.buffer)
     obj = pickle.loads(serialized_command)
-    return obj
+    return obj, t0
 
 
 class ShardedCache(object):
@@ -187,7 +190,11 @@ class ShardedCache(object):
         self.max_age = max_age
         self.cache_ring = NodeRing(range(cache_count))
         self.zmq_context = zmq.Context()
-        self.cache_shards = spawn_shards(self.zmq_context, cache_count, statistics_buffer_size, max_cache_size, max_age)
+        self.cache_shards = spawn_shards(self.zmq_context,
+                                         cache_count,
+                                         statistics_buffer_size,
+                                         max_cache_size/cache_count,
+                                         max_age)
 
     def _post_query_processing(self):
         if self.query_count % 10 == 0:
@@ -201,8 +208,17 @@ class ShardedCache(object):
         shard_id = self.cache_ring.get_node(command.dataset_key)
         shard = self.cache_shards[shard_id]
         send_object(shard.socket, command)
-        result = receive_object(shard.socket)
+        result, _ = receive_object(shard.socket)
         return result
+
+    def run_command_on_all_shards(self, command):
+        results = []
+        for shard in self.cache_shards:
+            send_object(shard.socket, command)
+            result, _ = receive_object(shard.socket)
+            results.append(result)
+
+        return results
 
     def query(self, dataset_key, q, filter_engine, stand_in_columns, accept_type):
         filter_engine = filter_engine or self.default_filter_engine
@@ -232,9 +248,21 @@ class ShardedCache(object):
         return self.run_command(DeleteCommand(dataset_key=dataset_key))
 
     def statistics(self):
-        # TODO
-        # Send stats command to all caches and gather results
-        pass
+        stats = {}
+        results = self.run_command_on_all_shards(StatsCommand())
+
+        # Merge statistics from the different shards
+        for result in results:
+            for stat, value in result.items():
+                if stat in stats:
+                    if isinstance(value, collections.Iterable):
+                        stats[stat].extend(value)
+                    else:
+                        stats[stat] += value
+                else:
+                    stats[stat] = value
+
+        return stats
 
     def stop(self):
         # Currently only used for testing
