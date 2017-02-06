@@ -1,3 +1,4 @@
+import json
 import time
 
 import gc
@@ -9,12 +10,11 @@ import blosc
 import zmq
 
 from qcache.cache_ring import NodeRing
-from qcache.constants import CONTENT_TYPE_CSV
+from qcache.constants import CONTENT_TYPE_CSV, CONTENT_TYPE_JSON
 from qcache.dataset_cache import DatasetCache
-from qcache.qframe import MalformedQueryException
+from qcache.qframe import MalformedQueryException, QFrame
 from qcache.statistics import Statistics
-from qcache.cache_common import QueryResult, InsertResult
-
+from qcache.cache_common import QueryResult, InsertResult, UTF8JSONDecoder
 
 STOP_COMMAND = "stop"
 
@@ -37,6 +37,10 @@ class InsertCommand(object):
     def __init__(self, dataset_key, qf):
         self.dataset_key = dataset_key
         self.qf = qf
+
+    def execute(self, worker):
+        return worker.insert(dataset_key=self.dataset_key,
+                             qf=self.qf)
 
 
 class DeleteCommand(object):
@@ -85,17 +89,17 @@ class CacheShard(object):
         self.stats.append('query_request_durations', duration+0.000001)
         return result
 
-    def insert(self, insert_command):
+    def insert(self, dataset_key, qf):
         t0 = time.time()
-        if insert_command.dataset_key in self.dataset_cache:
+        if dataset_key in self.dataset_cache:
             self.stats.inc('replace_count')
-            del self.dataset_cache[insert_command.dataset_key]
+            del self.dataset_cache[dataset_key]
 
-        durations_until_eviction = self.dataset_cache.ensure_free(insert_command.qf.len)
-        self.dataset_cache[insert_command.dataset_key] = insert_command.qf
+        durations_until_eviction = self.dataset_cache.ensure_free(len(qf))
+        self.dataset_cache[dataset_key] = qf
         self.stats.inc('size_evict_count', count=len(durations_until_eviction))
         self.stats.inc('store_count')
-        self.stats.append('store_row_counts', len(insert_command.qf))
+        self.stats.append('store_row_counts', len(qf))
         self.stats.extend('durations_until_eviction', durations_until_eviction)
 
         duration = time.time() - t0
@@ -135,10 +139,8 @@ def shard_process(ipc_address, statistics_buffer_size, max_cache_size, max_age):
         except Exception as e:
             print(e)
             # TODO: Formalize this...
-            socket.send("error")
+            send_object(socket, "error")
 
-
-# TODO: Naming, sub_processes, shards, etc
 
 class ShardHandle(object):
     def __init__(self, process, socket):
@@ -208,16 +210,22 @@ class ShardedCache(object):
                                stand_in_columns=stand_in_columns)
 
         result = self.run_command(command)
+        if result.status == QueryResult.STATUS_SUCCESS:
+            result.data = result.data.to_json() if accept_type == CONTENT_TYPE_JSON else result.data.to_csv()
+            result.content_type = accept_type
 
-        # TODO: Transform result DF to accept type
         return result
 
     def insert(self, dataset_key, data, content_type, data_types, stand_in_columns):
-        # TODO
-        # Create dataframe
-        # Send to appropriate cache
+        if content_type == CONTENT_TYPE_CSV:
+            qf = QFrame.from_csv(data, column_types=data_types, stand_in_columns=stand_in_columns)
+        else:
+            data = json.loads(data, cls=UTF8JSONDecoder)
+            qf = QFrame.from_dicts(data, stand_in_columns=stand_in_columns)
 
-        return InsertResult(status=InsertResult.STATUS_SUCCESS)
+        command = InsertCommand(dataset_key=dataset_key, qf=qf)
+        result = self.run_command(command)
+        return result
 
     def delete(self, dataset_key):
         # TODO

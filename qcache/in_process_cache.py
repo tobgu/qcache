@@ -2,7 +2,7 @@ import json
 import time
 import gc
 
-from qcache.cache_common import QueryResult, InsertResult
+from qcache.cache_common import QueryResult, InsertResult, UTF8JSONDecoder
 from qcache.constants import CONTENT_TYPE_CSV
 from qcache.dataset_cache import DatasetCache
 from qcache.qframe import MalformedQueryException, QFrame
@@ -96,3 +96,7 @@ class InProcessCache(object):
         stats['dataset_count'] = len(self.dataset_cache)
         stats['cache_size'] = self.dataset_cache.size
         return stats
+
+    def stop(self):
+        # Part of the interface but nothing to do in this implementation
+        pass

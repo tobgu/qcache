@@ -1,13 +1,94 @@
+import json
+from contextlib import contextmanager
+
+import pytest
+import time
+
+from qcache.cache_common import QueryResult, InsertResult
+from qcache.constants import CONTENT_TYPE_CSV, CONTENT_TYPE_JSON
+from qcache.in_process_cache import InProcessCache
 from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR
 
 from qcache.sharded_cache import ShardedCache
 
 
-def test_insert_query_delete():
-    cache = ShardedCache(statistics_buffer_size=100,
-                         max_cache_size=100000,
-                         max_age=100,
-                         default_filter_engine=FILTER_ENGINE_NUMEXPR,
-                         cache_count=3)
+@pytest.fixture
+def basic_csv_frame():
+    return """
+index,foo,bar,baz,qux
+1,bbb,1.25,5,qqq
+2,aaa,3.25,7,qqq
+3,ccc,,9,www"""
 
-    cache.stop()
+
+@contextmanager
+def sharded_cache(cache_type,
+                  statistics_buffer_size=100,
+                  max_cache_size=100000,
+                  max_age=100,
+                  default_filter_engine=FILTER_ENGINE_NUMEXPR,
+                  cache_count=3):
+    if cache_type == 'sharded':
+        cache = ShardedCache(statistics_buffer_size=statistics_buffer_size,
+                             max_cache_size=max_cache_size,
+                             max_age=max_age,
+                             default_filter_engine=default_filter_engine,
+                             cache_count=cache_count)
+    else:
+        cache = InProcessCache(statistics_buffer_size=statistics_buffer_size,
+                               max_cache_size=max_cache_size,
+                               max_age=max_age,
+                               default_filter_engine=default_filter_engine)
+    try:
+        yield cache
+    finally:
+        cache.stop()
+
+
+@pytest.fixture(scope='session', params=['sharded', 'in_process'])
+def cache_type(request):
+    return request.param
+
+
+def test_insert_query_delete(cache_type, basic_csv_frame):
+    with sharded_cache(cache_type) as cache:
+        key = 'foo'
+        limit = 2
+        insert_result = cache.insert(dataset_key=key,
+                                     data=basic_csv_frame,
+                                     content_type=CONTENT_TYPE_CSV,
+                                     data_types={'index': 'string'},
+                                     stand_in_columns=[('extra_insert', '42')])
+
+        assert insert_result.status == InsertResult.STATUS_SUCCESS
+
+        query_result = cache.query(dataset_key=key,
+                                   q={'limit': limit},
+                                   filter_engine=None,
+                                   stand_in_columns=[('extra_query', '24')],
+                                   accept_type=CONTENT_TYPE_JSON)
+
+        assert query_result.status == QueryResult.STATUS_SUCCESS
+        assert query_result.content_type == CONTENT_TYPE_JSON
+        assert query_result.unsliced_length == 3
+        result = json.loads(query_result.data)
+        assert result == [{u'bar': 1.25,
+                           u'baz': 5,
+                           u'extra_insert': 42.0,
+                           u'extra_query': 24.0,
+                           u'foo': u'bbb',
+                           u'index': u'1',
+                           u'qux': u'qqq'},
+                          {u'bar': 3.25,
+                           u'baz': 7,
+                           u'extra_insert': 42.0,
+                           u'extra_query': 24.0,
+                           u'foo': u'aaa',
+                           u'index': u'2',
+                           u'qux': u'qqq'}]
+
+# - Respects input parameters to all functions
+# - Query when frame does not exist
+# - Statistics
+#    * Per request
+#    * Aggregated
