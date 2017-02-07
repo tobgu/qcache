@@ -1,5 +1,6 @@
 import re
 
+import pandas
 from pandas import DataFrame
 from pandas.computation.ops import UndefinedVariableError
 from pandas.core.groupby import DataFrameGroupBy
@@ -110,7 +111,6 @@ def _alias(dataframe, expressions):
 
         eval_expr = _build_eval_expression(source)
         try:
-            print(destination, eval_expr)
             result_frame = result_frame.eval('{destination} = {expr}'.format(destination=destination, expr=eval_expr), inplace=False)
         except (SyntaxError, ValueError):
             raise_malformed('Unknown function in alias', source)

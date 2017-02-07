@@ -64,7 +64,7 @@ def http_auth(handler_class):
                 set_401(handler)
                 return False
 
-            auth_decoded = base64.decodestring(auth_header[6:])
+            auth_decoded = base64.decodebytes(auth_header[6:].encode('utf-8')).decode('utf-8')
             user, password = auth_decoded.split(':', 2)
 
             if not credentials_correct(user, password):
@@ -83,15 +83,6 @@ def http_auth(handler_class):
 
     handler_class._execute = wrap_execute(handler_class._execute)
     return handler_class
-
-
-class UTF8JSONDecoder(json.JSONDecoder):
-    def decode(self, json_string):
-        obj = super(UTF8JSONDecoder, self).decode(json_string)
-        assert isinstance(obj, list), "Must pass a list of objects"
-
-        for r in obj:
-            yield {k: v.encode(encoding='utf-8') if isinstance(v, str) else v for k, v in r.items()}
 
 
 class AppState(object):
@@ -249,11 +240,8 @@ class DatasetHandler(RequestHandler):
             qf = QFrame.from_csv(input_data, column_types=self.dtypes(),
                                  stand_in_columns=self.stand_in_columns())
         else:
-            # This is a waste of CPU cycles, first the JSON decoder decodes all strings
-            # from UTF-8 then we immediately encode them back into UTF-8. Couldn't
-            # find an easy solution to this though.
             durations_until_eviction = self.dataset_cache.ensure_free(len(input_data) / 2)
-            data = json.loads(input_data, cls=UTF8JSONDecoder)
+            data = json.loads(input_data)
             qf = QFrame.from_dicts(data, stand_in_columns=self.stand_in_columns())
 
         self.dataset_cache[dataset_key] = qf

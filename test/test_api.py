@@ -33,7 +33,7 @@ def to_csv(data):
 
 
 def from_csv(text):
-    input_data = io.BytesIO(text)
+    input_data = io.StringIO(text.decode('utf-8'))
     return list(csv.DictReader(input_data))
 
 
@@ -401,7 +401,7 @@ class TestStatusEndpoint(SharedTest):
         response = self.fetch('/status')
 
         assert response.code == 200
-        assert response.body == "OK"
+        assert response.body == b"OK"
 
 
 class TestDatasetDelete(SharedTest):

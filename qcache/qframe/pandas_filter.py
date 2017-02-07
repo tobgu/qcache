@@ -6,6 +6,7 @@ from qcache.qframe.common import assert_list, raise_malformed, is_quoted, unquot
 
 def _leaf_node(df, q):
     if isinstance(q, str):
+        print(q)
         if is_quoted(q):
             return q[1:-1]
 

@@ -10,12 +10,14 @@ from qcache.qframe.update import update_frame
 from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR
 
 
-def _get_dtype(obj):
-    try:
-        float(obj)
-        return None    # Numpy figures this out automatically
-    except ValueError:
-        return numpy.object
+def convert_if_number(obj):
+    for fn in int, float:
+        try:
+            return fn(obj)
+        except ValueError:
+            pass
+
+    return obj
 
 
 def _add_stand_in_columns(df, stand_in_columns):
@@ -27,9 +29,9 @@ def _add_stand_in_columns(df, stand_in_columns):
             if stand_in_value in df:
                 df.loc[:, column_name] = df[stand_in_value]
             else:
-                dtype = _get_dtype(stand_in_value)
+                stand_in_value = convert_if_number(stand_in_value)
                 stand_in_value = unquote(stand_in_value)
-                arr = numpy.full(len(df), stand_in_value, dtype=dtype)
+                arr = numpy.full(len(df), stand_in_value)
                 df.loc[:, column_name] = pandas.Series(arr, index=df.index)
 
 
@@ -53,7 +55,7 @@ class QFrame(object):
     def from_dicts(d, column_types=None, stand_in_columns=None):
         df = DataFrame.from_records(d)
 
-        # Setting columns to categorials is slightly awkward from dicts
+        # Setting columns to categorials is slightly more awkward from dicts
         # than from CSV...
         if column_types:
             for name, type in column_types.items():

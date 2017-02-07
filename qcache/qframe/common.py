@@ -34,6 +34,9 @@ def is_quoted(string):
 
 
 def unquote(s):
+    if not isinstance(s, str):
+        return s
+
     if s.startswith("'") or s.startswith('"'):
         s = s[1:]
 
