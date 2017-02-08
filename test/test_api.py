@@ -325,8 +325,8 @@ class TestBitwiseQueriesPandas(PandasMixin, SharedTest):
 
 class TestCacheEvictionOnSize(SharedTest):
     def get_app(self):
-        # A cache size of 200 is trimmed for the below test cases
-        just_enough_to_fit_smaller_values = 315
+        # A cache size trimmed for the below test cases
+        just_enough_to_fit_smaller_values = 347
         return app.make_app(url_prefix='', max_cache_size=just_enough_to_fit_smaller_values, debug=True)
 
     def test_evicts_entry_when_too_much_space_occupied(self):
@@ -336,6 +336,8 @@ class TestCacheEvictionOnSize(SharedTest):
         # Post data and assure available
         response = self.post_json('/dataset/abc', data)
         assert response.code == 201
+
+        # This triggers a resize of the frame. See https://github.com/pandas-dev/pandas/issues/15344
         assert self.query_json('/dataset/abc', {}).code == 200
 
         response = self.post_json('/dataset/cba', data)
@@ -349,7 +351,7 @@ class TestCacheEvictionOnSize(SharedTest):
         stats = self.get_statistics()
 
         assert stats['dataset_count'] == 1
-        assert stats['cache_size'] == 370
+        assert stats['cache_size'] == 402
         assert stats['hit_count'] == 2
         assert stats['miss_count'] == 1
         assert stats['size_evict_count'] == 1

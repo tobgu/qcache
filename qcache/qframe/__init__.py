@@ -39,11 +39,12 @@ class QFrame(object):
     """
     Thin wrapper around a Pandas dataframe.
     """
-    __slots__ = ('df', 'unsliced_df_len')
+    __slots__ = ('df', 'unsliced_df_len', '_size')
 
     def __init__(self, pandas_df, unsliced_df_len=None):
         self.unsliced_df_len = len(pandas_df) if unsliced_df_len is None else unsliced_df_len
         self.df = pandas_df
+        self._size = None
 
     @staticmethod
     def from_csv(csv_string, column_types=None, stand_in_columns=None):
@@ -94,4 +95,10 @@ class QFrame(object):
 
     def byte_size(self):
         # Estimate of the number of bytes consumed by this QFrame
-        return self.df.memory_usage(index=True, deep=True).sum()
+
+        # There is something fishy with the memory usage and to_json in Python 3,
+        # see https://github.com/pandas-dev/pandas/issues/15344
+        if self._size is None:
+            self._size = self.df.memory_usage(index=True, deep=True).sum()
+
+        return self._size

@@ -771,6 +771,8 @@ def test_large_frame_pickle(large_frame):
     with timeit('to_pickle'):
         result = pickle.dumps(large_frame.df, pickle.HIGHEST_PROTOCOL)
 
+    print("Large frame byte size: {}".format(large_frame.byte_size()))
+
     print("Pickle", len(result))
     with timeit('from_pickle'):
         df = pickle.loads(result)
@@ -783,7 +785,7 @@ def test_large_frame_msgpack2(large_frame):
         result = large_frame.df.to_msgpack()
 
     print("Msgpack", len(result))
-    with timeit('to_msgpack'):
+    with timeit('read_msgpack'):
         df = pandas.read_msgpack(result)
 
 @pytest.mark.benchmark

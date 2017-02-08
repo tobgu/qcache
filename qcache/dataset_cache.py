@@ -17,7 +17,8 @@ class CacheItem(object):
     @property
     def size(self):
         # 100 bytes is just a very rough estimate of the object overhead of this instance
-        return 100 + self._qframe.byte_size()
+        size = 100 + self._qframe.byte_size()
+        return size
 
 
 class DatasetCache(object):
