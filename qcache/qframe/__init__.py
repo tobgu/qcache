@@ -94,10 +94,8 @@ class QFrame(object):
         return len(self.df)
 
     def byte_size(self):
-        # Estimate of the number of bytes consumed by this QFrame
-
-        # There is something fishy with the memory usage and to_json in Python 3,
-        # see https://github.com/pandas-dev/pandas/issues/15344
+        # Estimate of the number of bytes consumed by this QFrame, this is a
+        # fairly heavy operation for large frames so we cache the result.
         if self._size is None:
             self._size = self.df.memory_usage(index=True, deep=True).sum()
 

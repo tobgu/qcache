@@ -6,7 +6,11 @@ Issues identified while converting to Python 3.6.
 
 https://github.com/pydata/numexpr/issues/141
 https://github.com/pandas-dev/pandas/issues/15320
-https://github.com/pandas-dev/pandas/issues/15344
+https://github.com/pandas-dev/pandas/issues/15344 (PR merged but not yet released)
+
+TODO
+----
+- Don't use from_dicts, instead use read_json in pandas directly.
 
 
 Performance

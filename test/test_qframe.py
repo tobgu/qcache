@@ -1,4 +1,5 @@
 # coding=utf-8
+import json
 from contextlib import contextmanager
 
 import pandas
@@ -716,13 +717,13 @@ def test_unknown_clause_in_query(basic_frame):
         print(e)
         assert 'foo' in str(e)
 
-from multiprocessing import Pipe
+
 ################### Performance ####################
 
 
 @pytest.fixture
 def large_frame():
-    d = 1000000 * [{'aaa': 123456789, 'bbb': 'abcdefghijklmnopqrvwxyz', 'ccc': 1.23456789}]
+    d = [{'aaa': 123456789 + i, 'bbb': 'abcdefghijklmnopqrvwxyz' + str(i), 'ccc': 1.23456789 + i} for i in range(1000000)]
     return QFrame.from_dicts(d)
 
 
@@ -750,13 +751,16 @@ def test_large_frame_csv(large_frame):
 
 @pytest.mark.benchmark
 def test_large_frame_json(large_frame):
+    print(large_frame.byte_size())
     with timeit('to_json'):
         result = large_frame.to_json()
 
+    print(large_frame.byte_size())
     print("JSON", len(result))
 
     # to_json duration: 0.792788982391 s
     # from_json duration: 3.07192707062 s, This implementation no longer exists
+
 
 @pytest.mark.benchmark
 def test_large_frame_hdf(large_frame):
