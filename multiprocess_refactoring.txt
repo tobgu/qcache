@@ -1,0 +1,58 @@
+TODO
+----
+- Refactor to find a cache interface that fits the current structure and make an in-process
+  implementation of this that is equivalent to the current.
+- Make a background process that handles the cache. Bind it using ZeroMQ.
+- Make a new implementation of the cache interface that implements serialization and
+  inter process communication including a consistent hashing node ring
+- Implement performance test suite using Locust or similar to measure the performance
+  impact between new and old implementation.
+- Add integration test suite that runs against running process(es) to verify that interprocess
+  communication works.
+- Add measurements and metrics to the different parts of the processing that are returned as
+  a header in the response.
+- Make a test adding pickling and de-pickling of dataframes in QFrame to verify that
+  all tests still pass.
+
+
+
+ Query
+ -----
+ - Input
+   * Dataset key
+   * Query
+   * Filter engine
+   * Stand in columns
+   * Accept type
+- Output
+   * Status ("Success", "Malformed query", "Not found")
+   * Data (data or error details) serialized according to
+     accept type.
+   * Unsliced length
+   * Content type
+   * Stats
+
+Insert
+------
+- Input
+   * Key
+   * Content type
+   * Content
+   * Stand in columns
+
+- Output
+   * Status ("Success", "Error")
+
+Delete
+------
+- Input
+   * Key
+
+- Output, non needed really
+
+Statistics
+----------
+- Input
+
+- Output
+   * Statistics dict

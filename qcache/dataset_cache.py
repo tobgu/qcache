@@ -1,6 +1,9 @@
 from time import time
 
 
+# TODO: Rename this file and classes to "Map"s instead to avoid confusion with
+#       the new higher level caches?
+
 class CacheItem(object):
     def __init__(self, qframe):
         self.creation_time = time()
@@ -59,6 +62,10 @@ class DatasetCache(object):
 
     def __len__(self):
         return len(self._cache_dict)
+
+    def delete(self, key):
+        if key in self:
+            del self[key]
 
     def ensure_free(self, byte_count):
         """
