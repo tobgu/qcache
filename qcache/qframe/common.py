@@ -60,7 +60,8 @@ def prepare_in_clause(q, filter_engine):
         current_qframe = get_current_qframe()
         sub_df, _ = query(current_qframe.df, args, filter_engine=filter_engine)
         try:
-            args = sub_df[col_name].values
+            # Explicitly remove nulls since they should not contribute to the result
+            args = sub_df[col_name].dropna().values
         except KeyError:
             raise_malformed('Unknown column "{}"'.format(col_name), q)
 

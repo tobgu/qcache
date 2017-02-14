@@ -252,27 +252,25 @@ def test_like_invalid_column_type(string_frame):
 ############### Sub select ##################
 
 
-@pytest.mark.parametrize("data", [
-    b"""foo,bar
-    1,1
-    2,1
-    3,2""",   # Numbers
-    b"""foo,bar
-    1,aa
-    2,aa
-    3,bb""",  # Strings
-    b"""foo,bar
-    1,
-    2,
-    3,bb""",  # null/None
+@pytest.mark.parametrize("data,expected_rows", [
+    (b"""foo,bar
+     1,1
+     2,1
+     3,2""", [1, 2]),  # Numbers
+    (b"""foo,bar
+     1,aa
+     2,aa
+     3,bb""", [1, 2]),  # Strings
+    (b"""foo,bar
+     1,
+     2,
+     3,bb""", []),  # null/None are ignored
 ])
-def test_sub_select(data, engine):
+def test_sub_select(data, expected_rows, engine):
     frame = QFrame.from_csv(data)
-
     result = frame.query({'where': ['in', 'bar', {'where': ['==', 'foo', 2]}]},
                          filter_engine=engine)
-
-    assert_rows(result, [1, 2])
+    assert_rows(result, expected_rows)
 
 
 def test_sub_select_in_column_missing_in_sub_select(engine):

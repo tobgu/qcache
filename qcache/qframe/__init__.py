@@ -97,7 +97,6 @@ class QFrame(object):
         # Estimate of the number of bytes consumed by this QFrame, this is a
         # fairly heavy operation for large frames so we cache the result.
         if self._byte_size is None:
-            # Estimate of the number of bytes consumed by this QFrame
             self._byte_size = self.df.memory_usage(index=True, deep=True).sum()
 
         return self._byte_size
