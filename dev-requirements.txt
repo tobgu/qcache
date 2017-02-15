@@ -3,3 +3,5 @@ invoke<=0.12.0
 freezegun
 pytest-cov
 flake8
+requests
+psutil
