@@ -35,7 +35,7 @@ def sharded_cache(cache_type,
                              max_cache_size=max_cache_size,
                              max_age=max_age,
                              default_filter_engine=default_filter_engine,
-                             cache_count=cache_count)
+                             shard_count=cache_count)
     else:
         cache = InProcessCache(statistics_buffer_size=statistics_buffer_size,
                                max_cache_size=max_cache_size,

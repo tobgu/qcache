@@ -4,6 +4,7 @@ import re
 import ssl
 import time
 
+from tornado import httpserver
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
 
@@ -11,6 +12,7 @@ from qcache.compression import CompressedContentEncoding, decoded_body
 from qcache.constants import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV
 from qcache.in_process_cache import InProcessCache, QueryResult, InsertResult
 from qcache.qframe import FILTER_ENGINE_NUMEXPR
+from qcache.sharded_cache import ShardedCache
 
 
 class ResponseCode(object):
@@ -232,16 +234,33 @@ class StatisticsHandler(RequestHandler):
         self.write(json.dumps(self.cache.statistics()))
 
 
-def make_app(url_prefix='/qcache', debug=False, max_cache_size=1000000000, max_age=0,
-             statistics_buffer_size=1000, basic_auth=None, default_filter_engine=FILTER_ENGINE_NUMEXPR):
+def make_cache(max_cache_size=1000000000,
+               max_age=0,
+               statistics_buffer_size=1000,
+               default_filter_engine=FILTER_ENGINE_NUMEXPR,
+               api_workers=1,
+               cache_shards=1,
+               l2_cache_size=0):
+    if api_workers == 1 and cache_shards == 1:
+        print("Using in-process cache")
+        return InProcessCache(statistics_buffer_size=statistics_buffer_size,
+                              max_cache_size=max_cache_size,
+                              max_age=max_age,
+                              default_filter_engine=default_filter_engine)
+
+    print("Using sharded cache")
+    return ShardedCache(statistics_buffer_size=statistics_buffer_size,
+                        max_cache_size=max_cache_size,
+                        max_age=max_age,
+                        default_filter_engine=default_filter_engine,
+                        shard_count=cache_shards)
+
+
+def make_app(cache, url_prefix='/qcache', debug=False, basic_auth=None):
     if basic_auth:
         global auth_user, auth_password
         auth_user, auth_password = basic_auth.split(':', 2)
 
-    cache = InProcessCache(statistics_buffer_size=statistics_buffer_size,
-                           max_cache_size=max_cache_size,
-                           max_age=max_age,
-                           default_filter_engine=default_filter_engine)
     return Application([
                            url(r"{url_prefix}/dataset/([A-Za-z0-9\-_]+)/?(q)?".format(url_prefix=url_prefix),
                                DatasetHandler,
@@ -272,27 +291,49 @@ def ssl_options(certfile, cafile=None):
     return {}
 
 
-def run(port=8888, max_cache_size=1000000000, max_age=0, statistics_buffer_size=1000,
-        debug=False, certfile=None, cafile=None, basic_auth=None, default_filter_engine=FILTER_ENGINE_NUMEXPR):
+def run(port=8888,
+        max_cache_size=1000000000,
+        max_age=0,
+        statistics_buffer_size=1000,
+        debug=False,
+        certfile=None,
+        cafile=None,
+        basic_auth=None,
+        default_filter_engine=FILTER_ENGINE_NUMEXPR,
+        api_workers=1,
+        cache_shards=1,
+        l2_cache_size=0):
+
     if basic_auth and not certfile:
         print("TLS must be enabled to use basic auth!")
         return
 
-    print("Starting on port {port}, max cache size {max_cache_size} bytes, max age {max_age} seconds,"
-          " statistics_buffer_size {statistics_buffer_size}, debug={debug},"
-          " default_filter_engine={default_filter_engine}".format(
-        port=port, max_cache_size=max_cache_size, max_age=max_age,
-        statistics_buffer_size=statistics_buffer_size, debug=debug,
-        default_filter_engine=default_filter_engine))
+    print("Starting...")
+    print("port={}".format(port))
+    print("max_cache_size={} bytes".format(max_cache_size))
+    print("max_age={} seconds".format(max_age))
+    print("statistics_buffer_size={}".format(statistics_buffer_size))
+    print("debug={}".format(debug))
+    print("default_filter_engine={}".format(default_filter_engine))
+    print("api_workers={}".format(api_workers))
+    print("cache_shards={}".format(cache_shards))
+    print("l2_cache_size={} bytes".format(l2_cache_size))
 
-    app = make_app(
-        debug=debug, max_cache_size=max_cache_size, max_age=max_age,
-        statistics_buffer_size=statistics_buffer_size, basic_auth=basic_auth,
-        default_filter_engine=default_filter_engine)
+    cache = make_cache(max_cache_size=max_cache_size,
+                       max_age=max_age,
+                       default_filter_engine=default_filter_engine,
+                       statistics_buffer_size=statistics_buffer_size,
+                       api_workers=api_workers,
+                       cache_shards=cache_shards,
+                       l2_cache_size=l2_cache_size)
+
+    app = make_app(cache, debug=debug, basic_auth=basic_auth)
 
     args = {}
     args.update(ssl_options(certfile=certfile, cafile=cafile))
-    app.listen(port, max_buffer_size=max_cache_size, **args)
+    http_server = httpserver.HTTPServer(app, max_buffer_size=max_cache_size)
+    http_server.bind(port)
+    http_server.start(api_workers)
     IOLoop.current().start()
 
 

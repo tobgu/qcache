@@ -39,12 +39,13 @@ def from_csv(text):
 
 class PandasMixin(object):
     def get_app(self):
-        return app.make_app(url_prefix='', debug=True, default_filter_engine='pandas')
+        cache = app.make_cache(default_filter_engine='pandas')
+        return app.make_app(cache, url_prefix='', debug=True)
 
 
 class SharedTest(AsyncHTTPTestCase):
     def get_app(self):
-        return app.make_app(url_prefix='', debug=True)
+        return app.make_app(app.make_cache(), url_prefix='', debug=True)
 
     def post_json(self, url, data, extra_headers=None):
         if not isinstance(data, (str, bytes)):
@@ -327,7 +328,8 @@ class TestCacheEvictionOnSize(SharedTest):
     def get_app(self):
         # A cache size trimmed for the below test cases
         just_enough_to_fit_smaller_values = 347
-        return app.make_app(url_prefix='', max_cache_size=just_enough_to_fit_smaller_values, debug=True)
+        cache = app.make_cache(max_cache_size=just_enough_to_fit_smaller_values)
+        return app.make_app(cache, url_prefix='', debug=True)
 
     def test_evicts_entry_when_too_much_space_occupied(self):
         data = [{'some_longish_key': 'some_fairly_longish_value_that_needs_to_be_stuffed_in'},
@@ -384,7 +386,8 @@ class TestCacheEvictionOnSize(SharedTest):
 class TestCacheEvictionOnAge(SharedTest):
     def get_app(self):
         # A cache size of 200 is trimmed for the below test cases
-        return app.make_app(url_prefix='', max_age=5, debug=True)
+        cache = app.make_cache(max_age=5)
+        return app.make_app(cache, url_prefix='', debug=True)
 
     def test_evicts_dataset_when_data_too_old(self):
         with freeze_time('2015-10-22 00:00:00'):
@@ -704,7 +707,7 @@ class SSLTestBase(AsyncHTTPTestCase):
     TLS_DIR = os.path.join(os.path.dirname(__file__), '../tls/')
 
     def get_app(self):
-        return app.make_app(url_prefix='', debug=True)
+        return app.make_app(app.make_cache(), url_prefix='', debug=True)
 
     def get_protocol(self):
         return 'https'
@@ -765,7 +768,7 @@ class TestSSLServerWithoutSSL(SSLTestBase):
 
 class TestSSLServerWithSSLAndBasicAuth(SSLTestBase):
     def get_app(self):
-        return app.make_app(url_prefix='', debug=True, basic_auth='foo:bar')
+        return app.make_app(app.make_cache(), url_prefix='', debug=True, basic_auth='foo:bar')
 
     def test_fetch_status_correct_credentials(self):
         response = self.fetch('/status', auth_username='foo', auth_password='bar')

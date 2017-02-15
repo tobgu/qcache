@@ -5,7 +5,8 @@
 Usage:
   qcache [-hd] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE] [--statistics-buffer-size=BUFFER_SIZE]
          [--cert-file=PATH_TO_CERT] [--ca-file=PATH_TO_CA] [--basic-auth=<USER>:<PASSWORD>]
-         [--default-filter-engine=FILTER_ENGINE]
+         [--default-filter-engine=FILTER_ENGINE] [--api-workers=API_WORKERS] [--cache-shards=CACHE_SHARDS]
+         [--l2-cache-size=L2_CACHE_SIZE]
 
 Options:
   -h --help                     Show this screen
@@ -20,6 +21,10 @@ Options:
   -ba <USER>:<PASSWORD> --basic-auth=<USER>:<PASSWORD>   Enable basic auth, requires that SSL is enabled.
   --default-filter-engine=FILTER_ENGINE   Which filter engine to use if none is specified in the query.
                                           Possible values: numexpr/pandas. [default: numexpr]
+  --api-workers=API_WORKERS   Number of processes that handle API calls, serialization/deserialization of
+                              data etc. [default: 1]
+  --cache-shards=CACHE_SHARDS   Number of cache shards [default: 1]
+  --l2-cache-size=L2_CACHE_SIZE  Layer 2 cache size [default: 0]
 """
 
 from docopt import docopt
@@ -48,7 +53,10 @@ def main():
             certfile=args['--cert-file'],
             cafile=args['--ca-file'],
             basic_auth=args['--basic-auth'],
-            default_filter_engine=args['--default-filter-engine'])
+            default_filter_engine=args['--default-filter-engine'],
+            api_workers=int(args['--api-workers']),
+            cache_shards=int(args['--cache-shards']),
+            l2_cache_size=int(args['--l2-cache-size']))
 
 if __name__ == '__main__':
     main()

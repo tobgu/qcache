@@ -1,19 +1,15 @@
 TODO
 ----
-- Refactor to find a cache interface that fits the current structure and make an in-process
-  implementation of this that is equivalent to the current.
-- Make a background process that handles the cache. Bind it using ZeroMQ.
-- Make a new implementation of the cache interface that implements serialization and
-  inter process communication including a consistent hashing node ring
+- Add configuration flags to start with multiple shards and API workers
 - Implement performance test suite using Locust or similar to measure the performance
   impact between new and old implementation.
 - Add integration test suite that runs against running process(es) to verify that interprocess
   communication works.
 - Add measurements and metrics to the different parts of the processing that are returned as
   a header in the response.
-- Make a test adding pickling and de-pickling of dataframes in QFrame to verify that
-  all tests still pass.
-
+- Implement L2 cache and measure efficiency
+- Share more code between non-sharded and sharded implementation and move the pieces that
+  differ into a connector.
 
 
  Query
@@ -56,3 +52,12 @@ Statistics
 
 - Output
    * Statistics dict
+
+
+Semantic differences
+--------------------
+- Sub select handling of NaN values. Previously used to
+  include NaNs. Now it does not. This is more inline with
+  SQL.
+- Python 3. Aliases cannot be set to strings for the moment
+  this may change in the future to be possible again.

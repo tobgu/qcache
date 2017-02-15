@@ -147,24 +147,39 @@ def shard_process(ipc_address, statistics_buffer_size, max_cache_size, max_age):
 
 
 class ShardHandle(object):
-    def __init__(self, process, socket):
+    def __init__(self, process, ipc_address):
         self.process = process
-        self.socket = socket
+        self.ipc_address = ipc_address
+        self.socket = None
 
     def stop(self):
+        self._ensure_socket()
         send_object(self.socket, STOP_COMMAND)
         self.process.join()
 
+    def _ensure_socket(self):
+        if self.socket is None:
+            self.socket = zmq.Context.instance().socket(zmq.REQ)
+            self.socket.connect(self.ipc_address)
 
-def spawn_shards(zmq_context, count, statistics_buffer_size, max_cache_size, max_age):
+    def send_object(self, obj):
+        self._ensure_socket()
+        send_object(self.socket, obj)
+
+    def receive_object(self):
+        self._ensure_socket()
+        return receive_object(self.socket)
+
+
+def spawn_shards(count, statistics_buffer_size, max_cache_size, max_age):
     shards = []
     for i in range(count):
         ipc_address = 'ipc:///tmp/qcache_ipc_{}'.format(i)
-        p = Process(target=shard_process, args=(ipc_address, statistics_buffer_size, max_cache_size, max_age))
+        p = Process(name='qcache_shard_{}'.format(i),
+                    target=shard_process,
+                    args=(ipc_address, statistics_buffer_size, max_cache_size, max_age))
         p.start()
-        socket = zmq_context.socket(zmq.REQ)
-        socket.connect(ipc_address)
-        shards.append(ShardHandle(process=p, socket=socket))
+        shards.append(ShardHandle(process=p, ipc_address=ipc_address))
 
     return shards
 
@@ -172,7 +187,7 @@ def spawn_shards(zmq_context, count, statistics_buffer_size, max_cache_size, max
 def send_object(socket, obj):
     serialized_object = pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
     compressed = blosc.compress(serialized_object, typesize=1, cname='lz4')
-    socket.send(compressed)
+    socket.send(compressed, copy=False)
 
 
 def receive_object(socket):
@@ -184,16 +199,14 @@ def receive_object(socket):
 
 
 class ShardedCache(object):
-    def __init__(self, statistics_buffer_size, max_cache_size, max_age, default_filter_engine, cache_count):
+    def __init__(self, statistics_buffer_size, max_cache_size, max_age, default_filter_engine, shard_count):
         self.query_count = 0
         self.default_filter_engine = default_filter_engine
         self.max_age = max_age
-        self.cache_ring = NodeRing(range(cache_count))
-        self.zmq_context = zmq.Context()
-        self.cache_shards = spawn_shards(self.zmq_context,
-                                         cache_count,
+        self.cache_ring = NodeRing(range(shard_count))
+        self.cache_shards = spawn_shards(shard_count,
                                          statistics_buffer_size,
-                                         max_cache_size/cache_count,
+                                         max_cache_size / shard_count,
                                          max_age)
 
     def _post_query_processing(self):
@@ -207,15 +220,15 @@ class ShardedCache(object):
     def run_command(self, command):
         shard_id = self.cache_ring.get_node(command.dataset_key)
         shard = self.cache_shards[shard_id]
-        send_object(shard.socket, command)
-        result, _ = receive_object(shard.socket)
+        shard.send_object(command)
+        result, _ = shard.receive_object()
         return result
 
     def run_command_on_all_shards(self, command):
         results = []
         for shard in self.cache_shards:
-            send_object(shard.socket, command)
-            result, _ = receive_object(shard.socket)
+            shard.send_object(command)
+            result, _ = shard.receive_object()
             results.append(result)
 
         return results
@@ -241,8 +254,7 @@ class ShardedCache(object):
             data = json.loads(data)
             qf = QFrame.from_dicts(data, stand_in_columns=stand_in_columns)
 
-        command = InsertCommand(dataset_key=dataset_key, qf=qf)
-        return self.run_command(command)
+        return self.run_command(InsertCommand(dataset_key=dataset_key, qf=qf))
 
     def delete(self, dataset_key):
         return self.run_command(DeleteCommand(dataset_key=dataset_key))
@@ -269,6 +281,6 @@ class ShardedCache(object):
         for shard in self.cache_shards:
             shard.stop()
 
-        self.zmq_context.destroy()
+        zmq.Context.instance().destroy()
 
 
