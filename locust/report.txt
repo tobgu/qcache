@@ -1,0 +1,55 @@
+Comments
+========
+Tests run according to specification below. They were executed until steady state was reached
+(a couple of minutes) then statistics were reset and the tests were executed another five
+minutes before reading metrics.
+
+In all tests but the single process ones the number of CPUs (2) were probably the limiting
+factor since they were used both for request generation (locust) and 3+ qcache processes.
+This can also be seen in the requests/s that top out on ~115 for config 1 and ~5 for config 2.
+
+CSV files used during test was generated like this:
+python csv_generator.py 50000 > medium_50000.csv
+
+Results
+=======
+
+qcache --api-workers=1 --cache-shards=1
+---------------------------------------
+100 Users, Hatch rate 50, Config 1
+Median    Average   Lowest   Highest    Req/s
+88        116       7        1560       ~115
+
+200 Users, Hatch rate 50, Config 1 (qcache CPU saturated)
+Median    Average   Lowest   Highest    Req/s
+970       1002      441      3225       ~115
+
+10 Users, Hatch rate 10, Config 2 (qcache CPU saturated)
+Median    Average   Lowest   Highest    Req/s
+790       1477      8        48800      ~5
+
+qcache --api-workers=2 --cache-shards=1
+---------------------------------------
+100 Users, Hatch rate 50, Config 1
+Median    Average   Lowest   Highest    Req/s
+90        123       9        1274       ~115
+
+200 Users, Hatch rate 50, Config 1 (CPU saturated)
+Median    Average   Lowest   Highest    Req/s
+1000      1042      274      2258       ~115
+
+10 Users, Hatch rate 10, Config 2
+Median    Average   Lowest   Highest    Req/s
+530       1037      10       6153       ~5
+
+qcache --api-workers=3 --cache-shards=1
+---------------------------------------
+10 Users, Hatch rate 10, Config 2
+Median    Average   Lowest   Highest    Req/s
+550       983       13       6200       ~5
+
+qcache --api-workers=3 --cache-shards=2
+---------------------------------------
+10 Users, Hatch rate 10, Config 2
+Median    Average   Lowest   Highest    Req/s
+410       909       10       5761       5.3
