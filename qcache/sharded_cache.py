@@ -6,8 +6,6 @@ import gc
 import traceback
 from multiprocessing import Process
 import pickle
-
-
 import blosc
 import zmq
 
@@ -55,6 +53,11 @@ class DeleteCommand(object):
 class StatsCommand(object):
     def execute(self, worker):
         return worker.statistics()
+
+
+class ResetCommand(object):
+    def execute(self, worker):
+        return worker.reset()
 
 
 class CacheShard(object):
@@ -124,6 +127,10 @@ class CacheShard(object):
         stats['cache_size'] = self.dataset_cache.size
         return stats
 
+    def reset(self):
+        self.dataset_cache.reset()
+        self.stats.reset()
+
 
 def shard_process(ipc_address, statistics_buffer_size, max_cache_size, max_age):
     context = zmq.Context()
@@ -164,7 +171,7 @@ class ShardHandle(object):
 
     def send_object(self, obj):
         self._ensure_socket()
-        send_object(self.socket, obj)
+        return send_object(self.socket, obj)
 
     def receive_object(self):
         self._ensure_socket()
@@ -188,6 +195,7 @@ def send_object(socket, obj):
     serialized_object = pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
     compressed = blosc.compress(serialized_object, typesize=1, cname='lz4')
     socket.send(compressed, copy=False)
+    return compressed
 
 
 def receive_object(socket):
@@ -283,4 +291,6 @@ class ShardedCache(object):
 
         zmq.Context.instance().destroy()
 
-
+    def reset(self):
+        # Currently only used for testing
+        self.run_command_on_all_shards(ResetCommand())

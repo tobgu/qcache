@@ -5,9 +5,9 @@ import io
 import lz4 as lz4
 import ssl
 
+import time
 from tornado.httputil import url_concat
 from tornado.testing import AsyncHTTPTestCase
-from freezegun import freeze_time
 
 import qcache
 import qcache.app as app
@@ -38,14 +38,31 @@ def from_csv(text):
 
 
 class PandasMixin(object):
+    @classmethod
+    def setUpClass(cls):
+        cls.cache = app.make_cache(default_filter_engine='pandas')
+
     def get_app(self):
-        cache = app.make_cache(default_filter_engine='pandas')
-        return app.make_app(cache, url_prefix='', debug=True)
+        return app.make_app(self.cache, url_prefix='', debug=True)
 
 
-class SharedTest(AsyncHTTPTestCase):
+class CacheMixin(AsyncHTTPTestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.cache = app.make_cache()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.cache.stop()
+
+    def setUp(self):
+        super(CacheMixin, self).setUp()
+        self.cache.reset()
+
+
+class SharedTest(CacheMixin):
     def get_app(self):
-        return app.make_app(app.make_cache(), url_prefix='', debug=True)
+        return app.make_app(self.cache, url_prefix='', debug=True)
 
     def post_json(self, url, data, extra_headers=None):
         if not isinstance(data, (str, bytes)):
@@ -312,6 +329,7 @@ class TestBitwiseQueries(SharedTest):
         assert response.code == 201
 
         response = self.query_json('/dataset/abc', {'where': ['all_bits', 'foo', 1]})
+        print(response.body)
         assert response.code == 400
 
 
@@ -325,11 +343,14 @@ class TestBitwiseQueriesPandas(PandasMixin, SharedTest):
 
 
 class TestCacheEvictionOnSize(SharedTest):
-    def get_app(self):
+    @classmethod
+    def setUpClass(cls):
         # A cache size trimmed for the below test cases
-        just_enough_to_fit_smaller_values = 347
-        cache = app.make_cache(max_cache_size=just_enough_to_fit_smaller_values)
-        return app.make_app(cache, url_prefix='', debug=True)
+        just_enough_to_fit_smaller_values = 524
+        cls.cache = app.make_cache(max_cache_size=just_enough_to_fit_smaller_values)
+
+    def get_app(self):
+        return app.make_app(self.cache, url_prefix='', debug=True)
 
     def test_evicts_entry_when_too_much_space_occupied(self):
         data = [{'some_longish_key': 'some_fairly_longish_value_that_needs_to_be_stuffed_in'},
@@ -384,21 +405,19 @@ class TestCacheEvictionOnSize(SharedTest):
 
 
 class TestCacheEvictionOnAge(SharedTest):
+    @classmethod
+    def setUpClass(cls):
+        cls.cache = app.make_cache(max_age=1)
+
     def get_app(self):
-        # A cache size of 200 is trimmed for the below test cases
-        cache = app.make_cache(max_age=5)
-        return app.make_app(cache, url_prefix='', debug=True)
+        return app.make_app(self.cache, url_prefix='', debug=True)
 
     def test_evicts_dataset_when_data_too_old(self):
-        with freeze_time('2015-10-22 00:00:00'):
-            data = [{'some_longish_key': 'short'}]
-            self.post_json('/dataset/abc', data)
-
-        with freeze_time('2015-10-22 00:00:04'):
-            assert self.query_json('/dataset/abc', {}).code == 200
-
-        with freeze_time('2015-10-22 00:00:06'):
-            assert self.query_json('/dataset/abc', {}).code == 404
+        data = [{'some_longish_key': 'short'}]
+        self.post_json('/dataset/abc', data)
+        assert self.query_json('/dataset/abc', {}).code == 200
+        time.sleep(1.0)
+        assert self.query_json('/dataset/abc', {}).code == 404
 
 
 class TestStatusEndpoint(SharedTest):
@@ -703,11 +722,19 @@ class TestStatistics(SharedTest):
         assert stats['store_durations'][0] < stats['store_request_durations'][0]
 
 
-class SSLTestBase(AsyncHTTPTestCase):
+class SSLTestBase(CacheMixin):
     TLS_DIR = os.path.join(os.path.dirname(__file__), '../tls/')
 
+    @classmethod
+    def setUpClass(cls):
+        cls.cache = app.make_cache(max_age=5)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.cache.stop()
+
     def get_app(self):
-        return app.make_app(app.make_cache(), url_prefix='', debug=True)
+        return app.make_app(self.cache, url_prefix='', debug=True)
 
     def get_protocol(self):
         return 'https'
@@ -768,7 +795,7 @@ class TestSSLServerWithoutSSL(SSLTestBase):
 
 class TestSSLServerWithSSLAndBasicAuth(SSLTestBase):
     def get_app(self):
-        return app.make_app(app.make_cache(), url_prefix='', debug=True, basic_auth='foo:bar')
+        return app.make_app(self.cache, url_prefix='', debug=True, basic_auth='foo:bar')
 
     def test_fetch_status_correct_credentials(self):
         response = self.fetch('/status', auth_username='foo', auth_password='bar')

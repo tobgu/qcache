@@ -28,8 +28,7 @@ class DatasetCache(object):
     def __init__(self, max_size, max_age):
         self.max_size = max_size
         self.max_age = max_age
-        self._cache_dict = {}
-        self.size = 0.0
+        self.reset()
 
     def has_expired(self, item):
         return self.max_age and time() > item.creation_time + self.max_age
@@ -40,6 +39,10 @@ class DatasetCache(object):
             return True
 
         return False
+
+    def reset(self):
+        self._cache_dict = {}
+        self.size = 0.0
 
     def __contains__(self, key):
         return key in self._cache_dict

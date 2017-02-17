@@ -8,9 +8,9 @@ from tornado import httpserver
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
 
+from qcache.cache_common import QueryResult, InsertResult
 from qcache.compression import CompressedContentEncoding, decoded_body
 from qcache.constants import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV
-from qcache.in_process_cache import InProcessCache, QueryResult, InsertResult
 from qcache.qframe import FILTER_ENGINE_NUMEXPR
 from qcache.sharded_cache import ShardedCache
 
@@ -238,17 +238,8 @@ def make_cache(max_cache_size=1000000000,
                max_age=0,
                statistics_buffer_size=1000,
                default_filter_engine=FILTER_ENGINE_NUMEXPR,
-               api_workers=1,
                cache_shards=1,
                l2_cache_size=0):
-    if api_workers == 1 and cache_shards == 1:
-        print("Using in-process cache")
-        return InProcessCache(statistics_buffer_size=statistics_buffer_size,
-                              max_cache_size=max_cache_size,
-                              max_age=max_age,
-                              default_filter_engine=default_filter_engine)
-
-    print("Using sharded cache")
     return ShardedCache(statistics_buffer_size=statistics_buffer_size,
                         max_cache_size=max_cache_size,
                         max_age=max_age,
@@ -323,7 +314,6 @@ def run(port=8888,
                        max_age=max_age,
                        default_filter_engine=default_filter_engine,
                        statistics_buffer_size=statistics_buffer_size,
-                       api_workers=api_workers,
                        cache_shards=cache_shards,
                        l2_cache_size=l2_cache_size)
 
