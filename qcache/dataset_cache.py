@@ -5,22 +5,22 @@ from time import time
 #       the new higher level caches?
 
 class CacheItem(object):
-    def __init__(self, qframe):
+    def __init__(self, dataset):
         self.creation_time = time()
         self.last_access_time = self.creation_time
-        self._qframe = qframe
+        self._dataset = dataset
         self.access_count = 0
 
     @property
     def dataset(self):
         self.last_access_time = time()
         self.access_count += 1
-        return self._qframe
+        return self._dataset
 
     @property
     def size(self):
         # 100 bytes is just a very rough estimate of the object overhead of this instance
-        size = 100 + self._qframe.byte_size()
+        size = 100 + self._dataset.byte_size()
         return size
 
 

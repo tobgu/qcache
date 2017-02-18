@@ -13,6 +13,8 @@ import qcache
 import qcache.app as app
 import csv
 
+from qcache.sharded_cache import ShardedCache
+
 
 def to_json(data):
     return json.dumps(data).encode('utf-8')
@@ -40,7 +42,7 @@ def from_csv(text):
 class PandasMixin(object):
     @classmethod
     def setUpClass(cls):
-        cls.cache = app.make_cache(default_filter_engine='pandas')
+        cls.cache = ShardedCache(default_filter_engine='pandas')
 
     def get_app(self):
         return app.make_app(self.cache, url_prefix='', debug=True)
@@ -49,7 +51,7 @@ class PandasMixin(object):
 class CacheMixin(AsyncHTTPTestCase):
     @classmethod
     def setUpClass(cls):
-        cls.cache = app.make_cache()
+        cls.cache = ShardedCache()
 
     @classmethod
     def tearDownClass(cls):
@@ -351,7 +353,7 @@ class TestCacheEvictionOnSize(SharedTest):
     def setUpClass(cls):
         # A cache size trimmed for the below test cases
         just_enough_to_fit_smaller_values = 524
-        cls.cache = app.make_cache(max_cache_size=just_enough_to_fit_smaller_values)
+        cls.cache = ShardedCache(max_cache_size=just_enough_to_fit_smaller_values)
 
     def get_app(self):
         return app.make_app(self.cache, url_prefix='', debug=True)
@@ -411,7 +413,7 @@ class TestCacheEvictionOnSize(SharedTest):
 class TestCacheEvictionOnAge(SharedTest):
     @classmethod
     def setUpClass(cls):
-        cls.cache = app.make_cache(max_age=1)
+        cls.cache = ShardedCache(max_age=1)
 
     def get_app(self):
         return app.make_app(self.cache, url_prefix='', debug=True)
@@ -731,7 +733,7 @@ class SSLTestBase(CacheMixin):
 
     @classmethod
     def setUpClass(cls):
-        cls.cache = app.make_cache(max_age=5)
+        cls.cache = ShardedCache(max_age=5)
 
     @classmethod
     def tearDownClass(cls):

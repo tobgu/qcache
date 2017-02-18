@@ -240,8 +240,6 @@ class StatusHandler(RequestHandler):
             raise Exception("Caches not OK")
 
 
-
-
 @http_auth
 class StatisticsHandler(RequestHandler):
     def initialize(self, cache):
@@ -251,19 +249,6 @@ class StatisticsHandler(RequestHandler):
     def get(self):
         self.set_header("Content-Type", "application/json; charset=utf-8")
         self.write(json.dumps(self.cache.statistics()))
-
-
-def make_cache(max_cache_size=1000000000,
-               max_age=0,
-               statistics_buffer_size=1000,
-               default_filter_engine=FILTER_ENGINE_NUMEXPR,
-               cache_shards=1,
-               l2_cache_size=0):
-    return ShardedCache(statistics_buffer_size=statistics_buffer_size,
-                        max_cache_size=max_cache_size,
-                        max_age=max_age,
-                        default_filter_engine=default_filter_engine,
-                        shard_count=cache_shards)
 
 
 def make_app(cache, url_prefix='/qcache', debug=False, basic_auth=None):
@@ -329,12 +314,12 @@ def run(port=8888,
     print("cache_shards={}".format(cache_shards))
     print("l2_cache_size={} bytes".format(l2_cache_size))
 
-    cache = make_cache(max_cache_size=max_cache_size,
-                       max_age=max_age,
-                       default_filter_engine=default_filter_engine,
-                       statistics_buffer_size=statistics_buffer_size,
-                       cache_shards=cache_shards,
-                       l2_cache_size=l2_cache_size)
+    cache = ShardedCache(max_cache_size=max_cache_size,
+                         max_age=max_age,
+                         default_filter_engine=default_filter_engine,
+                         statistics_buffer_size=statistics_buffer_size,
+                         shard_count=cache_shards,
+                         l2_cache_size=l2_cache_size)
 
     app = make_app(cache, debug=debug, basic_auth=basic_auth)
 

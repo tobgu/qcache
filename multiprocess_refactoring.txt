@@ -4,7 +4,15 @@ TODO
   a header in the response.
 - Implement L2 cache and measure efficiency
 - Proper error handling if shard crashes
-- Fix status endpoint to check caches as well
+- Fix status endpoint to check l2 cache if exists
+- Test what happens if worker process fails
+
+- Insert
+  Get
+  Delete
+  Statistics
+  Reset
+  Stop
 
  Query
  -----
