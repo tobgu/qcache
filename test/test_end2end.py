@@ -11,10 +11,9 @@ import time
 def kill_child_processes(parent_pid):
     parent = psutil.Process(parent_pid)
     children = parent.children(recursive=True)
+    parent.send_signal(signal.SIGKILL)
     for process in children:
       process.send_signal(signal.SIGKILL)
-
-    parent.send_signal(signal.SIGKILL)
 
 
 def await_qcache():

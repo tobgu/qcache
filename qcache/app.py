@@ -1,4 +1,5 @@
 import base64
+import functools
 import json
 import re
 import ssl
@@ -83,9 +84,15 @@ def http_auth(handler_class):
     return handler_class
 
 
-class AppState(object):
-    def __init__(self):
-        self.query_count = 0
+def measured(method):
+    @functools.wraps(method)
+    def _execute(self, *args, **kwargs):
+        t0 = time.time()
+        result = method(self, *args, **kwargs)
+        self.set_header('X-QCache-execution-duration', '{}'.format(round(time.time() - t0, 4)))
+        return result
+
+    return _execute
 
 
 @http_auth
@@ -180,6 +187,7 @@ class DatasetHandler(RequestHandler):
 
         return None
 
+    @measured
     def get(self, dataset_key, optional_q):
         if optional_q:
             # There should not be a q URL for the GET method, it's supposed to take
@@ -190,6 +198,7 @@ class DatasetHandler(RequestHandler):
         if q_dict is not None:
             self.query(dataset_key, q_dict)
 
+    @measured
     def post(self, dataset_key, optional_q):
         if optional_q:
             q_dict = self.q_json_to_dict(decoded_body(self.request))
@@ -209,6 +218,7 @@ class DatasetHandler(RequestHandler):
         else:
             raise Exception("Unknown insert status: {}".format(result.status))
 
+    @measured
     def delete(self, dataset_key, optional_q):
         if optional_q:
             # There should not be a q parameter for the delete method
@@ -229,6 +239,7 @@ class StatisticsHandler(RequestHandler):
     def initialize(self, cache):
         self.cache = cache
 
+    @measured
     def get(self):
         self.set_header("Content-Type", "application/json; charset=utf-8")
         self.write(json.dumps(self.cache.statistics()))

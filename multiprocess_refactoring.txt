@@ -1,16 +1,9 @@
 TODO
 ----
-- Add configuration flags to start with multiple shards and API workers
-- Implement performance test suite using Locust or similar to measure the performance
-  impact between new and old implementation.
-- Add integration test suite that runs against running process(es) to verify that interprocess
-  communication works.
 - Add measurements and metrics to the different parts of the processing that are returned as
   a header in the response.
 - Implement L2 cache and measure efficiency
-- Share more code between non-sharded and sharded implementation and move the pieces that
-  differ into a connector.
-
+- Proper error handling if shard crashes
 
  Query
  -----

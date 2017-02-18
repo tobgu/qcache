@@ -103,6 +103,7 @@ class SharedTest(CacheMixin):
     def get_statistics(self):
         response = self.fetch('/statistics', use_gzip=False)
         assert response.code == 200
+        assert float(response.headers['X-QCache-execution-duration']) > 0
         return json.loads(response.body)
 
 
@@ -115,10 +116,12 @@ class TestBaseCases(SharedTest):
     def test_upload_json_query_json(self):
         response = self.post_json('/dataset/abc', [{'foo': 1, 'bar': 10}, {'foo': 2, 'bar': 20}])
         assert response.code == 201
+        assert float(response.headers['X-QCache-execution-duration']) > 0
 
         response = self.query_json('/dataset/abc', {'where': ['==', 'foo', 1]})
         assert response.code == 200
         assert json.loads(response.body) == [{'foo': 1, 'bar': 10}]
+        assert float(response.headers['X-QCache-execution-duration']) > 0
 
     def test_upload_csv_query_csv(self):
         response = self.post_csv('/dataset/cba', [{'baz': 1, 'bar': 10}, {'baz': 2, 'bar': 20}])
@@ -171,6 +174,7 @@ class TestQueryWithPost(SharedTest):
 
         response = self.fetch('/dataset/abc', method='DELETE')
         assert response.code == 200
+        assert float(response.headers['X-QCache-execution-duration']) > 0
 
     def test_get_against_q_endpoint_is_404(self):
         response = self.post_json('/dataset/abc', [{'foo': 1, 'bar': 10}, {'foo': 2, 'bar': 20}])
