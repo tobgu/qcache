@@ -230,8 +230,16 @@ class DatasetHandler(RequestHandler):
 
 @http_auth
 class StatusHandler(RequestHandler):
+    def initialize(self, cache):
+        self.cache = cache
+
     def get(self):
-        self.write("OK")
+        if self.cache.status() == "OK":
+            self.write("OK")
+        else:
+            raise Exception("Caches not OK")
+
+
 
 
 @http_auth
@@ -270,7 +278,7 @@ def make_app(cache, url_prefix='/qcache', debug=False, basic_auth=None):
                                name="dataset"),
                            url(r"{url_prefix}/status".format(url_prefix=url_prefix),
                                StatusHandler,
-                               dict(),
+                               dict(cache=cache),
                                name="status"),
                            url(r"{url_prefix}/statistics".format(url_prefix=url_prefix),
                                StatisticsHandler,

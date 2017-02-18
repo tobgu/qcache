@@ -60,6 +60,11 @@ class ResetCommand(object):
         return worker.reset()
 
 
+class StatusCommand(object):
+    def execute(self, worker):
+        return worker.status()
+
+
 class CacheShard(object):
     def __init__(self, statistics_buffer_size, max_cache_size, max_age):
         self.stats = Statistics(buffer_size=statistics_buffer_size)
@@ -126,6 +131,9 @@ class CacheShard(object):
         stats['dataset_count'] = len(self.dataset_cache)
         stats['cache_size'] = self.dataset_cache.size
         return stats
+
+    def status(self):
+        return "OK"
 
     def reset(self):
         self.dataset_cache.reset()
@@ -294,3 +302,9 @@ class ShardedCache(object):
     def reset(self):
         # Currently only used for testing
         self.run_command_on_all_shards(ResetCommand())
+
+    def status(self):
+        if all(s == "OK" for s in self.run_command_on_all_shards(StatusCommand())):
+            return "OK"
+
+        return "NOK"
