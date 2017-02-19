@@ -33,27 +33,28 @@ class L2CacheHandle(object):
             return InsertResult(status=InsertResult.STATUS_SUCCESS)
 
         if dataset_key in self.dataset_cache:
-            self.stats.inc('replace_count')
+            self.stats.inc('l2_replace_count')
             del self.dataset_cache[dataset_key]
 
         wrapped_data = DataWrapper(data)
         durations_until_eviction = self.dataset_cache.ensure_free(wrapped_data.byte_size())
         self.dataset_cache[dataset_key] = wrapped_data
-        self.stats.inc('size_evict_count', count=len(durations_until_eviction))
-        self.stats.inc('store_count')
-        self.stats.extend('durations_until_eviction', durations_until_eviction)
+        self.stats.inc('l2_size_evict_count', count=len(durations_until_eviction))
+        self.stats.inc('l2_store_count')
+        self.stats.extend('l2_durations_until_eviction', durations_until_eviction)
         return InsertResult(status=InsertResult.STATUS_SUCCESS)
 
     def get(self, dataset_key):
         if dataset_key not in self.dataset_cache:
-            self.stats.inc('miss_count')
+            self.stats.inc('l2_miss_count')
             return GetResult(status=GetResult.STATUS_NOT_FOUND)
 
         if self.dataset_cache.evict_if_too_old(dataset_key):
-            self.stats.inc('miss_count')
-            self.stats.inc('age_evict_count')
+            self.stats.inc('l2_miss_count')
+            self.stats.inc('l2_age_evict_count')
             return GetResult(status=GetResult.STATUS_NOT_FOUND)
 
+        self.stats.inc('l2_hit_count')
         return GetResult(status=GetResult.STATUS_SUCCESS, data=self.dataset_cache[dataset_key].data)
 
     def delete(self, dataset_key):
@@ -62,8 +63,8 @@ class L2CacheHandle(object):
 
     def statistics(self):
         stats = self.stats.snapshot()
-        stats['dataset_count'] = len(self.dataset_cache)
-        stats['cache_size'] = self.dataset_cache.size
+        stats['l2_dataset_count'] = len(self.dataset_cache)
+        stats['l2_cache_size'] = self.dataset_cache.size
         return stats
 
     def status(self):

@@ -222,7 +222,7 @@ def receive_object(socket):
     t0 = time.time()
     serialized_command = blosc.decompress(msg.buffer)
     obj = pickle.loads(serialized_command)
-    if isinstance(obj, ShardException):
+    if isinstance(obj, Exception):
         raise obj
 
     return obj, t0
@@ -315,7 +315,7 @@ class ShardedCache(object):
         return result
 
     def statistics(self):
-        stats = {}
+        stats = self.l2_cache.statistics()
         results = self.run_command_on_all_shards(StatsCommand())
 
         # Merge statistics from the different shards
@@ -324,7 +324,7 @@ class ShardedCache(object):
                 if stat in stats:
                     if isinstance(value, collections.Iterable):
                         stats[stat].extend(value)
-                    else:
+                    elif stat not in {'statistics_duration', 'statistics_buffer_size'}:
                         stats[stat] += value
                 else:
                     stats[stat] = value
@@ -341,6 +341,7 @@ class ShardedCache(object):
     def reset(self):
         # Currently only used for testing
         self.run_command_on_all_shards(ResetCommand())
+        self.l2_cache.reset()
 
     def status(self):
         if all(s == "OK" for s in self.run_command_on_all_shards(StatusCommand())):

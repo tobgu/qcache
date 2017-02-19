@@ -355,9 +355,6 @@ class TestCacheEvictionOnSize(SharedTest):
         just_enough_to_fit_smaller_values = 524
         cls.cache = ShardedCache(max_cache_size=just_enough_to_fit_smaller_values)
 
-    def get_app(self):
-        return app.make_app(self.cache, url_prefix='', debug=True)
-
     def test_evicts_entry_when_too_much_space_occupied(self):
         data = [{'some_longish_key': 'some_fairly_longish_value_that_needs_to_be_stuffed_in'},
                 {'some_longish_key': 'another_fairly_longish_value_that_also_should_be_fitted'}]
@@ -396,7 +393,8 @@ class TestCacheEvictionOnSize(SharedTest):
 
         # Check stats again, this time it should have been cleared
         assert set(self.get_statistics().keys()) == \
-               {'dataset_count', 'cache_size', 'statistics_duration', 'statistics_buffer_size'}
+               {'dataset_count', 'cache_size', 'statistics_duration', 'statistics_buffer_size',
+                'l2_dataset_count', 'l2_cache_size'}
 
     def test_can_insert_more_entries_with_smaller_values(self):
         data = [{'some_longish_key': 'short'},
@@ -415,15 +413,77 @@ class TestCacheEvictionOnAge(SharedTest):
     def setUpClass(cls):
         cls.cache = ShardedCache(max_age=1)
 
-    def get_app(self):
-        return app.make_app(self.cache, url_prefix='', debug=True)
-
     def test_evicts_dataset_when_data_too_old(self):
         data = [{'some_longish_key': 'short'}]
         self.post_json('/dataset/abc', data)
         assert self.query_json('/dataset/abc', {}).code == 200
         time.sleep(1.0)
         assert self.query_json('/dataset/abc', {}).code == 404
+
+
+class TestL2Cache(SharedTest):
+    @classmethod
+    def setUpClass(cls):
+        cls.cache = ShardedCache(max_cache_size=1000, l2_cache_size=5000)
+
+    def test_l2_cache_used_when_dataset_not_available_in_primary_cache(self):
+        data = [{'some_longish_key': 'short'},
+                {'some_longish_key': 'another_short'}]
+
+        self.post_json('/dataset/aaa', data)
+        self.post_json('/dataset/bbb', data)
+        self.post_json('/dataset/ccc', data)
+        self.post_json('/dataset/ddd', data)
+        self.post_json('/dataset/eee', data)
+        self.post_json('/dataset/fff', data)
+
+        stats = self.get_statistics()
+        assert stats['size_evict_count'] == 3
+        assert stats['l2_store_count'] == 6
+        assert self.query_json('/dataset/aaa', {}).code == 200
+
+        stats = self.get_statistics()
+        assert stats['l2_dataset_count'] == 6
+        assert stats['l2_hit_count'] == 1
+
+    def test_l2_cache_delete_applies_to_l2_cache(self):
+        data = [{'some_longish_key': 'short'}]
+
+        self.post_json('/dataset/aaa', data)
+        assert self.query_json('/dataset/aaa', {}).code == 200
+
+        assert self.fetch('/dataset/aaa', method='DELETE').code == 200
+        assert self.query_json('/dataset/aaa', {}).code == 404
+
+    def test_l2_cache_respects_max_size(self):
+        data = [{'some_longish_key': 'short'},
+                {'some_longish_key': 'another_short'}]
+
+        for i in range(10):
+            self.post_json('/dataset/{}'.format(i), data)
+
+        assert self.query_json('/dataset/aaa', {}).code == 404
+
+        stats = self.get_statistics()
+        assert stats['l2_size_evict_count'] == 4
+
+
+class TestL2CacheAge(SharedTest):
+    @classmethod
+    def setUpClass(cls):
+        cls.cache = ShardedCache(max_cache_size=1000, l2_cache_size=5000, max_age=1.0)
+
+    def test_l2_cache_respects_max_age(self):
+        data = [{'some_longish_key': 'short'},
+                {'some_longish_key': 'another_short'}]
+
+        self.post_json('/dataset/aaa', data)
+        time.sleep(1.0)
+
+        assert self.query_json('/dataset/aaa', {}).code == 404
+
+        stats = self.get_statistics()
+        assert stats['l2_age_evict_count'] == 1
 
 
 class TestStatusEndpoint(SharedTest):
