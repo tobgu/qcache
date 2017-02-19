@@ -486,6 +486,22 @@ class TestL2CacheAge(SharedTest):
         assert stats['l2_age_evict_count'] == 1
 
 
+class TestMultipleShards(SharedTest):
+    @classmethod
+    def setUpClass(cls):
+        cls.cache = ShardedCache(shard_count=2)
+
+    def test_insert_and_query_multiple_shards(self):
+        dataset_count = 30
+        for i in range(dataset_count):
+            self.post_json('/dataset/{}'.format(i), [{'{}'.format(i): i}])
+
+        for i in range(dataset_count):
+            response = self.query_json('/dataset/{}'.format(i), {})
+            assert response.code == 200
+            assert json.loads(response.body) == [{'{}'.format(i): i}]
+
+
 class TestStatusEndpoint(SharedTest):
     def test_status_endpoint_returns_200_ok(self):
         response = self.fetch('/status')
