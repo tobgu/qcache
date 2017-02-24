@@ -51,3 +51,7 @@ def test_e2e_statistics(api_workers, cache_shards):
             response = requests.get('http://localhost:8888/qcache/statistics')
             assert response.status_code == 200
             assert response.json()
+
+
+# TODO: Test killing various processes and see what happens
+#       Test using a session rather than individual requests and see what happens

@@ -2,10 +2,11 @@ TODO
 ----
 - Add measurements and metrics to the different parts of the processing that are returned as
   a header in the response.
-- Implement L2 cache and measure efficiency
-- Proper error handling if shard crashes
+- Proper error handling if shard or l2 crashes
 - Fix status endpoint to check l2 cache if exists
 - Test what happens if worker process fails
+- Zmq errors
+- Measure L2 impact
 
 - Insert
   Get
