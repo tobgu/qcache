@@ -1,3 +1,7 @@
+"""
+Results returned from server processes to clients.
+"""
+
 
 class QueryResult(object):
     STATUS_SUCCESS = "success"

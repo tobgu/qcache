@@ -1,3 +1,6 @@
+"""
+Helpers for Process and Inter Process Communication (IPC).
+"""
 import pickle
 
 import blosc
@@ -8,10 +11,7 @@ import zmq
 STOP_COMMAND = "stop"
 STATUS_OK = "OK"
 
-# TODO: Handle this: zmq.error.ZMQError: Operation cannot be accomplished in current state
 
-# TODO: Split this class to one for shards and one for l2 cache
-#       or use multipart messages everywhere...
 class ProcessHandle(object):
     def __init__(self, process, ipc_address):
         self.process = process

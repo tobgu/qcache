@@ -1,29 +1,34 @@
+"""
+'Layer 2 cache' used to store data in a more memory efficient way. Data in the
+L2 cache cannot be queried directly but must be moved into the primary cache.
+
+Unlike the primary cache the layer 2 cache stores opaque bytes objects that
+can be inserted, accessed and deleted by key.
+"""
 import traceback
 from multiprocessing import Process
 
 import zmq
 
 from qcache.cache.cache_common import InsertResult, DeleteResult
-from qcache.cache.dataset_cache import DatasetCache
+from qcache.cache.dataset_cache import DatasetMap
 from qcache.cache.ipc import ProcessHandle, STOP_COMMAND, receive_serialized_objects, serialize_object, \
     deserialize_object, send_serialized_objects, send_objects, STATUS_OK
 from qcache.cache.statistics import Statistics
 
 
 class L2CacheException(Exception):
+    """
+    Wrapper for exceptions occurring in the L2 cache server process.
+    """
     pass
 
 
-class GetResult(object):
-    STATUS_NOT_FOUND = "not_found"
-    STATUS_SUCCESS = "success"
-
-    def __init__(self, status):
-        self.status = status
-        self.data = None
-
-
 class DataWrapper(object):
+    """
+    Thin wrapper around an object that supports the "len()" to make it compatible
+    with the DatasetMap.
+    """
     __slots__ = ('data',)
 
     def __init__(self, data):
@@ -34,8 +39,11 @@ class DataWrapper(object):
 
 
 class L2Cache(object):
+    """
+    Layer 2 cache server process logic.
+    """
     def __init__(self, statistics_buffer_size, max_age, max_size):
-        self.dataset_cache = DatasetCache(max_age=max_age, max_size=max_size)
+        self.dataset_cache = DatasetMap(max_age=max_age, max_size=max_size)
         self.stats = Statistics(buffer_size=statistics_buffer_size)
 
     def insert(self, dataset_key, data):
@@ -111,42 +119,10 @@ class NopL2CacheHandle(object):
         pass
 
 
-class DatasetCommand(object):
-    def __init__(self, dataset_key):
-        self.dataset_key = dataset_key
-
-
-class InsertCommand(DatasetCommand):
-    def execute(self, l2cache, data):
-        return l2cache.insert(self.dataset_key, data)
-
-
-class GetCommand(DatasetCommand):
-    def execute(self, l2cache, _):
-        return l2cache.get(self.dataset_key)
-
-
-class DeleteCommand(DatasetCommand):
-    def execute(self, l2cache, _):
-        return l2cache.delete(self.dataset_key)
-
-
-class StatisticsCommand(object):
-    def execute(self, l2cache, _):
-        return l2cache.statistics()
-
-
-class StatusCommand(object):
-    def execute(self, l2cache, _):
-        return l2cache.status()
-
-
-class ResetCommnad(object):
-    def execute(self, l2cache, _):
-        return l2cache.reset()
-
-
 class L2CacheHandle(object):
+    """
+    Client process API for communication with the L2 server process.
+    """
     def __init__(self, process_handle):
         self.process_handle = process_handle
 
@@ -188,6 +164,9 @@ class L2CacheHandle(object):
 
 
 def l2_cache_process(ipc_address, statistics_buffer_size, max_cache_size, max_age):
+    """
+    Function executing the Layer 2 cache server.
+    """
     context = zmq.Context()
     socket = context.socket(zmq.REP)
     socket.bind(ipc_address)
@@ -214,6 +193,10 @@ def l2_cache_process(ipc_address, statistics_buffer_size, max_cache_size, max_ag
 
 
 def create_l2_cache(statistics_buffer_size, max_age, max_size):
+    """
+    Create a layer 2 cache. Start server process and return a client side API
+    object for interaction with the server side cache.
+    """
     if max_size <= 0:
         return NopL2CacheHandle()
 
@@ -223,3 +206,55 @@ def create_l2_cache(statistics_buffer_size, max_age, max_size):
                 args=(ipc_address, statistics_buffer_size, max_size, max_age))
     p.start()
     return L2CacheHandle(ProcessHandle(p, ipc_address))
+
+
+# ##################################################################
+# ### Commands sent from L2 client process to the server process ###
+# ##################################################################
+
+class DatasetCommand(object):
+    def __init__(self, dataset_key):
+        self.dataset_key = dataset_key
+
+
+class InsertCommand(DatasetCommand):
+    def execute(self, l2cache, data):
+        return l2cache.insert(self.dataset_key, data)
+
+
+class GetCommand(DatasetCommand):
+    def execute(self, l2cache, _):
+        return l2cache.get(self.dataset_key)
+
+
+class DeleteCommand(DatasetCommand):
+    def execute(self, l2cache, _):
+        return l2cache.delete(self.dataset_key)
+
+
+class StatisticsCommand(object):
+    def execute(self, l2cache, _):
+        return l2cache.statistics()
+
+
+class StatusCommand(object):
+    def execute(self, l2cache, _):
+        return l2cache.status()
+
+
+class ResetCommnad(object):
+    def execute(self, l2cache, _):
+        return l2cache.reset()
+
+
+# #####################################################################
+# ### Results returned from L2 server process to the client process ###
+# #####################################################################
+
+class GetResult(object):
+    STATUS_NOT_FOUND = "not_found"
+    STATUS_SUCCESS = "success"
+
+    def __init__(self, status):
+        self.status = status
+        self.data = None

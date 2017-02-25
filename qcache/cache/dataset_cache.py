@@ -1,10 +1,11 @@
+"""
+Map from key to dataset. Keeps track and evicts datasets that no longer
+fit or that are too old.
+"""
 from time import time
 
 
-# TODO: Rename this file and classes to "Map"s instead to avoid confusion with
-#       the new higher level caches?
-
-class CacheItem(object):
+class MapItem(object):
     def __init__(self, dataset):
         self.creation_time = time()
         self.last_access_time = self.creation_time
@@ -24,7 +25,7 @@ class CacheItem(object):
         return size
 
 
-class DatasetCache(object):
+class DatasetMap(object):
     def __init__(self, max_size, max_age):
         self.max_size = max_size
         self.max_age = max_age
@@ -55,7 +56,7 @@ class DatasetCache(object):
         if key in self._cache_dict:
             current_size = self._cache_dict[key].size
 
-        new_item = CacheItem(qframe)
+        new_item = MapItem(qframe)
         self.size += new_item.size - current_size
         self._cache_dict[key] = new_item
 

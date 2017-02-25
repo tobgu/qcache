@@ -1,3 +1,16 @@
+"""
+QFrame cache. Stores frames in memory where they can be queried.
+
+The cache consists of several parts:
+* One or more cache shards that hold QFrames and executes queries on them. Each shard
+  executes in a separate process.
+* A client side API that handles data serialization, routing of commands to cache shards
+  depending  on the dataset key.
+* Optionally a "layer 2 cache" that holds compressed and hence more space efficient representations
+  of the datasets. This allows the cache to hold a larger number of datasets in memory at the cost
+  of access time since the data must be moved from the L2 cache to the primary cache before being
+  queried.
+"""
 import collections
 import json
 import time
@@ -11,7 +24,7 @@ from qcache.cache.ipc import receive_object, ProcessHandle, STOP_COMMAND, send_o
 from qcache.cache.cache_ring import NodeRing
 from qcache.cache.l2_cache import create_l2_cache, GetResult
 from qcache.cache.cache_common import QueryResult, InsertResult, DeleteResult
-from qcache.cache.dataset_cache import DatasetCache
+from qcache.cache.dataset_cache import DatasetMap
 from qcache.cache.statistics import Statistics
 
 from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR
@@ -20,59 +33,19 @@ from qcache.qframe import MalformedQueryException, QFrame
 
 
 class ShardException(Exception):
+    """
+    Wrapper for exceptions occurring in a cache shard server process.
+    """
     pass
 
 
-class QueryCommand(object):
-    def __init__(self, dataset_key, q, filter_engine, stand_in_columns):
-        self.dataset_key = dataset_key
-        self.q = q
-        self.filter_engine = filter_engine
-        self.stand_in_columns = stand_in_columns
-
-    def execute(self, cache_shard):
-        return cache_shard.query(dataset_key=self.dataset_key,
-                                 q=self.q,
-                                 filter_engine=self.filter_engine,
-                                 stand_in_columns=self.stand_in_columns)
-
-
-class InsertCommand(object):
-    def __init__(self, dataset_key, qf):
-        self.dataset_key = dataset_key
-        self.qf = qf
-
-    def execute(self, cache_shard):
-        return cache_shard.insert(dataset_key=self.dataset_key, qf=self.qf)
-
-
-class DeleteCommand(object):
-    def __init__(self, dataset_key):
-        self.dataset_key = dataset_key
-
-    def execute(self, cache_shard):
-        return cache_shard.delete(self.dataset_key)
-
-
-class StatsCommand(object):
-    def execute(self, cache_shard):
-        return cache_shard.statistics()
-
-
-class ResetCommand(object):
-    def execute(self, cache_shard):
-        return cache_shard.reset()
-
-
-class StatusCommand(object):
-    def execute(self, cache_shard):
-        return cache_shard.status()
-
-
 class CacheShard(object):
+    """
+    Server side cache shard.
+    """
     def __init__(self, statistics_buffer_size, max_cache_size, max_age):
         self.stats = Statistics(buffer_size=statistics_buffer_size)
-        self.dataset_cache = DatasetCache(max_size=max_cache_size, max_age=max_age)
+        self.dataset_cache = DatasetMap(max_size=max_cache_size, max_age=max_age)
         self.query_count = 0
 
     def query(self, dataset_key, q, filter_engine, stand_in_columns):
@@ -145,6 +118,9 @@ class CacheShard(object):
 
 
 def shard_process(ipc_address, statistics_buffer_size, max_cache_size, max_age):
+    """
+    Function executing a cache shard server.
+    """
     context = zmq.Context()
     socket = context.socket(zmq.REP)
     socket.bind(ipc_address)
@@ -165,6 +141,10 @@ def shard_process(ipc_address, statistics_buffer_size, max_cache_size, max_age):
 
 
 def spawn_shards(count, statistics_buffer_size, max_cache_size, max_age):
+    """
+    Start requested number of cache shard servers and return client side handles to
+    the servers.
+    """
     shards = []
     for i in range(count):
         ipc_address = 'ipc:///tmp/qcache_ipc_{}'.format(i)
@@ -178,6 +158,9 @@ def spawn_shards(count, statistics_buffer_size, max_cache_size, max_age):
 
 
 class ShardedCache(object):
+    """
+    Cache client side API.
+    """
     def __init__(self,
                  statistics_buffer_size=1000,
                  max_cache_size=1000000000,
@@ -306,3 +289,52 @@ class ShardedCache(object):
             return "NOK"
 
         return STATUS_OK
+
+# ###############################################################
+# ### Commands sent from client to cache shard server process ###
+# ###############################################################
+
+class QueryCommand(object):
+    def __init__(self, dataset_key, q, filter_engine, stand_in_columns):
+        self.dataset_key = dataset_key
+        self.q = q
+        self.filter_engine = filter_engine
+        self.stand_in_columns = stand_in_columns
+
+    def execute(self, cache_shard):
+        return cache_shard.query(dataset_key=self.dataset_key,
+                                 q=self.q,
+                                 filter_engine=self.filter_engine,
+                                 stand_in_columns=self.stand_in_columns)
+
+
+class InsertCommand(object):
+    def __init__(self, dataset_key, qf):
+        self.dataset_key = dataset_key
+        self.qf = qf
+
+    def execute(self, cache_shard):
+        return cache_shard.insert(dataset_key=self.dataset_key, qf=self.qf)
+
+
+class DeleteCommand(object):
+    def __init__(self, dataset_key):
+        self.dataset_key = dataset_key
+
+    def execute(self, cache_shard):
+        return cache_shard.delete(self.dataset_key)
+
+
+class StatsCommand(object):
+    def execute(self, cache_shard):
+        return cache_shard.statistics()
+
+
+class ResetCommand(object):
+    def execute(self, cache_shard):
+        return cache_shard.reset()
+
+
+class StatusCommand(object):
+    def execute(self, cache_shard):
+        return cache_shard.status()
