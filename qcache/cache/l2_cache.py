@@ -8,20 +8,14 @@ can be inserted, accessed and deleted by key.
 import traceback
 from multiprocessing import Process
 
+import time
 import zmq
 
-from qcache.cache.cache_common import InsertResult, DeleteResult
+from qcache.cache.cache_common import InsertResult, DeleteResult, Result
 from qcache.cache.dataset_cache import DatasetMap
 from qcache.cache.ipc import ProcessHandle, STOP_COMMAND, receive_serialized_objects, serialize_object, \
     deserialize_object, send_serialized_objects, send_objects, STATUS_OK
 from qcache.cache.statistics import Statistics
-
-
-class L2CacheException(Exception):
-    """
-    Wrapper for exceptions occurring in the L2 cache server process.
-    """
-    pass
 
 
 class DataWrapper(object):
@@ -43,50 +37,50 @@ class L2Cache(object):
     Layer 2 cache server process logic.
     """
     def __init__(self, statistics_buffer_size, max_age, max_size):
-        self.dataset_cache = DatasetMap(max_age=max_age, max_size=max_size)
+        self.dataset_map = DatasetMap(max_age=max_age, max_size=max_size)
         self.stats = Statistics(buffer_size=statistics_buffer_size)
 
     def insert(self, dataset_key, data):
-        if dataset_key in self.dataset_cache:
+        if dataset_key in self.dataset_map:
             self.stats.inc('l2_replace_count')
-            del self.dataset_cache[dataset_key]
+            del self.dataset_map[dataset_key]
 
         wrapped_data = DataWrapper(data)
-        durations_until_eviction = self.dataset_cache.ensure_free(wrapped_data.byte_size())
-        self.dataset_cache[dataset_key] = wrapped_data
+        durations_until_eviction = self.dataset_map.ensure_free(wrapped_data.byte_size())
+        self.dataset_map[dataset_key] = wrapped_data
         self.stats.inc('l2_size_evict_count', count=len(durations_until_eviction))
         self.stats.inc('l2_store_count')
         self.stats.extend('l2_durations_until_eviction', durations_until_eviction)
         return InsertResult(status=InsertResult.STATUS_SUCCESS)
 
     def get(self, dataset_key):
-        if dataset_key not in self.dataset_cache:
+        if dataset_key not in self.dataset_map:
             self.stats.inc('l2_miss_count')
             return GetResult(status=GetResult.STATUS_NOT_FOUND)
 
-        if self.dataset_cache.evict_if_too_old(dataset_key):
+        if self.dataset_map.evict_if_too_old(dataset_key):
             self.stats.inc('l2_miss_count')
             self.stats.inc('l2_age_evict_count')
             return GetResult(status=GetResult.STATUS_NOT_FOUND)
 
         self.stats.inc('l2_hit_count')
-        return GetResult(status=GetResult.STATUS_SUCCESS), self.dataset_cache[dataset_key].data
+        return GetResult(status=GetResult.STATUS_SUCCESS), self.dataset_map[dataset_key].data
 
     def delete(self, dataset_key):
-        self.dataset_cache.delete(dataset_key)
+        self.dataset_map.delete(dataset_key)
         return DeleteResult(status=DeleteResult.STATUS_SUCCESS)
 
     def statistics(self):
         stats = self.stats.snapshot()
-        stats['l2_dataset_count'] = len(self.dataset_cache)
-        stats['l2_cache_size'] = self.dataset_cache.size
+        stats['l2_dataset_count'] = len(self.dataset_map)
+        stats['l2_cache_size'] = self.dataset_map.size
         return stats
 
     def status(self):
         return STATUS_OK
 
     def reset(self):
-        self.dataset_cache.reset()
+        self.dataset_map.reset()
         self.stats.reset()
         return None
 
@@ -176,6 +170,7 @@ def l2_cache_process(ipc_address, statistics_buffer_size, max_cache_size, max_ag
     while True:
         try:
             objects = receive_serialized_objects(socket)
+            t0 = time.time()
             command = deserialize_object(objects[0])
             input_data = None
             if len(objects) == 2:
@@ -186,9 +181,11 @@ def l2_cache_process(ipc_address, statistics_buffer_size, max_cache_size, max_ag
 
             response = command.execute(l2_cache, input_data)
             result, output_data = response if isinstance(response, tuple) else (response, serialize_object(None))
+            if isinstance(result, Result):
+                result.stats['l2_execution_duration'] = time.time() - t0
             send_serialized_objects(socket, serialize_object(result), output_data)
         except Exception as e:
-            send_objects(socket, L2CacheException(e))
+            send_objects(socket, e)
             traceback.print_exc()
 
 
@@ -251,10 +248,11 @@ class ResetCommnad(object):
 # ### Results returned from L2 server process to the client process ###
 # #####################################################################
 
-class GetResult(object):
+class GetResult(Result):
     STATUS_NOT_FOUND = "not_found"
     STATUS_SUCCESS = "success"
 
     def __init__(self, status):
         self.status = status
         self.data = None
+        super().__init__()

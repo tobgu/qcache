@@ -23,7 +23,7 @@ import zmq
 from qcache.cache.ipc import receive_object, ProcessHandle, STOP_COMMAND, send_object, STATUS_OK
 from qcache.cache.cache_ring import NodeRing
 from qcache.cache.l2_cache import create_l2_cache, GetResult
-from qcache.cache.cache_common import QueryResult, InsertResult, DeleteResult
+from qcache.cache.cache_common import QueryResult, InsertResult, DeleteResult, Result
 from qcache.cache.dataset_cache import DatasetMap
 from qcache.cache.statistics import Statistics
 
@@ -32,34 +32,27 @@ from qcache.constants import CONTENT_TYPE_CSV, CONTENT_TYPE_JSON
 from qcache.qframe import MalformedQueryException, QFrame
 
 
-class ShardException(Exception):
-    """
-    Wrapper for exceptions occurring in a cache shard server process.
-    """
-    pass
-
-
 class CacheShard(object):
     """
     Server side cache shard.
     """
     def __init__(self, statistics_buffer_size, max_cache_size, max_age):
         self.stats = Statistics(buffer_size=statistics_buffer_size)
-        self.dataset_cache = DatasetMap(max_size=max_cache_size, max_age=max_age)
+        self.dataset_map = DatasetMap(max_size=max_cache_size, max_age=max_age)
         self.query_count = 0
 
     def query(self, dataset_key, q, filter_engine, stand_in_columns):
         t0 = time.time()
-        if dataset_key not in self.dataset_cache:
+        if dataset_key not in self.dataset_map:
             self.stats.inc('miss_count')
             return QueryResult(status=QueryResult.STATUS_NOT_FOUND)
 
-        if self.dataset_cache.evict_if_too_old(dataset_key):
+        if self.dataset_map.evict_if_too_old(dataset_key):
             self.stats.inc('miss_count')
             self.stats.inc('age_evict_count')
             return QueryResult(status=QueryResult.STATUS_NOT_FOUND)
 
-        qf = self.dataset_cache[dataset_key]
+        qf = self.dataset_map[dataset_key]
         try:
             result_frame = qf.query(q, filter_engine=filter_engine, stand_in_columns=stand_in_columns)
         except MalformedQueryException as e:
@@ -81,12 +74,12 @@ class CacheShard(object):
 
     def insert(self, dataset_key, qf):
         t0 = time.time()
-        if dataset_key in self.dataset_cache:
+        if dataset_key in self.dataset_map:
             self.stats.inc('replace_count')
-            del self.dataset_cache[dataset_key]
+            del self.dataset_map[dataset_key]
 
-        durations_until_eviction = self.dataset_cache.ensure_free(qf.byte_size())
-        self.dataset_cache[dataset_key] = qf
+        durations_until_eviction = self.dataset_map.ensure_free(qf.byte_size())
+        self.dataset_map[dataset_key] = qf
         self.stats.inc('size_evict_count', count=len(durations_until_eviction))
         self.stats.inc('store_count')
         self.stats.append('store_row_counts', len(qf))
@@ -100,20 +93,20 @@ class CacheShard(object):
         return InsertResult(status=InsertResult.STATUS_SUCCESS)
 
     def delete(self, dataset_key):
-        self.dataset_cache.delete(dataset_key)
+        self.dataset_map.delete(dataset_key)
         return DeleteResult(status=DeleteResult.STATUS_SUCCESS)
 
     def statistics(self):
         stats = self.stats.snapshot()
-        stats['dataset_count'] = len(self.dataset_cache)
-        stats['cache_size'] = self.dataset_cache.size
+        stats['dataset_count'] = len(self.dataset_map)
+        stats['cache_size'] = self.dataset_map.size
         return stats
 
     def status(self):
         return STATUS_OK
 
     def reset(self):
-        self.dataset_cache.reset()
+        self.dataset_map.reset()
         self.stats.reset()
 
 
@@ -134,9 +127,11 @@ def shard_process(ipc_address, statistics_buffer_size, max_cache_size, max_age):
                 return
 
             result = command.execute(worker)
+            if isinstance(result, Result):
+                result.stats['shard_execution_duration'] = time.time() - t0
             send_object(socket, result)
         except Exception as e:
-            send_object(socket, ShardException(e))
+            send_object(socket, e)
             traceback.print_exc()
 
 
@@ -226,7 +221,9 @@ class ShardedCache(object):
                 shard = self.shard_for_dataset(dataset_key)
                 shard.send_serialized_object(get_result.data)
                 result, _ = shard.receive_object()
-                return self._do_query(command, accept_type)
+                query_result = self._do_query(command, accept_type)
+                query_result.stats.update(get_result.stats)
+                return query_result
 
         return result
 
@@ -242,13 +239,15 @@ class ShardedCache(object):
 
         shard = self.shard_for_dataset(dataset_key)
         input_data = shard.send_object(InsertCommand(dataset_key=dataset_key, qf=qf))
-        self.l2_cache.insert(dataset_key, input_data)
+        l2_result = self.l2_cache.insert(dataset_key, input_data)
         result, _ = shard.receive_object()
+        result.stats.update(l2_result.stats)
         return result
 
     def delete(self, dataset_key):
-        self.l2_cache.delete(dataset_key)
+        l2_result = self.l2_cache.delete(dataset_key)
         result, _ = self.run_command(DeleteCommand(dataset_key=dataset_key))
+        result.stats.update(l2_result.stats)
         return result
 
     def statistics(self):
@@ -293,6 +292,7 @@ class ShardedCache(object):
 # ###############################################################
 # ### Commands sent from client to cache shard server process ###
 # ###############################################################
+
 
 class QueryCommand(object):
     def __init__(self, dataset_key, q, filter_engine, stand_in_columns):

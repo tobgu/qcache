@@ -39,6 +39,10 @@ def from_csv(text):
     return list(csv.DictReader(input_data))
 
 
+def stats_string_to_kv(string):
+    return dict(kv.split('=') for kv in string.split(','))
+
+
 class PandasMixin(object):
     @classmethod
     def setUpClass(cls):
@@ -105,7 +109,7 @@ class SharedTest(CacheMixin):
     def get_statistics(self):
         response = self.fetch('/statistics', use_gzip=False)
         assert response.code == 200
-        assert float(response.headers['X-QCache-execution-duration']) > 0
+        assert float(stats_string_to_kv(response.headers['X-QCache-stats'])['request_duration']) > 0
         return json.loads(response.body)
 
 
@@ -118,12 +122,16 @@ class TestBaseCases(SharedTest):
     def test_upload_json_query_json(self):
         response = self.post_json('/dataset/abc', [{'foo': 1, 'bar': 10}, {'foo': 2, 'bar': 20}])
         assert response.code == 201
-        assert float(response.headers['X-QCache-execution-duration']) > 0
+        assert float(stats_string_to_kv(response.headers['X-QCache-stats'])['request_duration']) > 0
+        assert float(stats_string_to_kv(response.headers['X-QCache-stats'])['shard_execution_duration']) > 0.0
 
         response = self.query_json('/dataset/abc', {'where': ['==', 'foo', 1]})
         assert response.code == 200
         assert json.loads(response.body) == [{'foo': 1, 'bar': 10}]
-        assert float(response.headers['X-QCache-execution-duration']) > 0
+        assert float(stats_string_to_kv(response.headers['X-QCache-stats'])['request_duration']) > 0
+        assert float(stats_string_to_kv(response.headers['X-QCache-stats'])['shard_execution_duration']) > 0.0
+
+        assert float(stats_string_to_kv(response.headers['X-QCache-stats'])['request_duration']) > 0
 
     def test_upload_csv_query_csv(self):
         response = self.post_csv('/dataset/cba', [{'baz': 1, 'bar': 10}, {'baz': 2, 'bar': 20}])
@@ -176,7 +184,7 @@ class TestQueryWithPost(SharedTest):
 
         response = self.fetch('/dataset/abc', method='DELETE')
         assert response.code == 200
-        assert float(response.headers['X-QCache-execution-duration']) > 0
+        assert float(stats_string_to_kv(response.headers['X-QCache-stats'])['request_duration']) > 0
 
     def test_get_against_q_endpoint_is_404(self):
         response = self.post_json('/dataset/abc', [{'foo': 1, 'bar': 10}, {'foo': 2, 'bar': 20}])
@@ -435,12 +443,16 @@ class TestL2Cache(SharedTest):
         self.post_json('/dataset/ccc', data)
         self.post_json('/dataset/ddd', data)
         self.post_json('/dataset/eee', data)
-        self.post_json('/dataset/fff', data)
+
+        response = self.post_json('/dataset/fff', data)
+        assert float(stats_string_to_kv(response.headers['X-QCache-stats'])['l2_execution_duration']) > 0.0
 
         stats = self.get_statistics()
         assert stats['size_evict_count'] == 3
         assert stats['l2_store_count'] == 6
-        assert self.query_json('/dataset/aaa', {}).code == 200
+        response = self.query_json('/dataset/aaa', {})
+        assert response.code == 200
+        assert float(stats_string_to_kv(response.headers['X-QCache-stats'])['l2_execution_duration']) > 0.0
 
         stats = self.get_statistics()
         assert stats['l2_dataset_count'] == 6
@@ -452,7 +464,9 @@ class TestL2Cache(SharedTest):
         self.post_json('/dataset/aaa', data)
         assert self.query_json('/dataset/aaa', {}).code == 200
 
-        assert self.fetch('/dataset/aaa', method='DELETE').code == 200
+        response = self.fetch('/dataset/aaa', method='DELETE')
+        assert float(stats_string_to_kv(response.headers['X-QCache-stats'])['l2_execution_duration']) > 0.0
+        assert response.code == 200
         assert self.query_json('/dataset/aaa', {}).code == 404
 
     def test_l2_cache_respects_max_size(self):
@@ -687,7 +701,8 @@ class TestStandInColumns(SharedTest):
         assert response.code == 200
         assert json.loads(response.body) == [{'baz': 2, 'bar': 20, 'foo': 20}]
 
-    def test_multiple_stand_in_columns(self):
+    def test_multiple_stand_in_columns_semi_colon(self):
+        # This is the legacy notation that is now deprecated
         response = self.post_csv('/dataset/cba', [{'baz': 1, 'bar': 10}],
                                  extra_headers={'X-QCache-stand-in-columns': 'foo=bar; qux=13'})
         assert response.code == 201
@@ -695,6 +710,17 @@ class TestStandInColumns(SharedTest):
         response = self.query_json('/dataset/cba', {})
         assert response.code == 200
         assert json.loads(response.body) == [{'baz': 1, 'bar': 10, 'foo': 10, 'qux': 13}]
+
+    def test_multiple_stand_in_columns_comma(self):
+        # This is the new standard which is in line with RFC 2616, 4.2
+        response = self.post_csv('/dataset/cba', [{'baz': 1, 'bar': 10}],
+                                 extra_headers={'X-QCache-stand-in-columns': 'foo=bar, qux=13'})
+        assert response.code == 201
+
+        response = self.query_json('/dataset/cba', {})
+        assert response.code == 200
+        assert json.loads(response.body) == [{'baz': 1, 'bar': 10, 'foo': 10, 'qux': 13}]
+
 
     def test_chained_stand_in_columns(self):
         response = self.post_csv('/dataset/cba', [{'baz': 1, 'bar': 10}],

@@ -9,7 +9,7 @@ from tornado import httpserver
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
 
-from qcache.cache.cache_common import QueryResult, InsertResult
+from qcache.cache.cache_common import QueryResult, InsertResult, Result
 from qcache.compression import CompressedContentEncoding, decoded_body
 from qcache.constants import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV
 from qcache.qframe import FILTER_ENGINE_NUMEXPR
@@ -89,10 +89,14 @@ def measured(method):
     def _execute(self, *args, **kwargs):
         t0 = time.time()
         result = method(self, *args, **kwargs)
-        self.set_header('X-QCache-execution-duration', '{}'.format(round(time.time() - t0, 4)))
+        add_stats_header(self, 'request_duration', round(time.time() - t0, 4))
         return result
 
     return _execute
+
+
+def add_stats_header(handler, key, value):
+    handler.add_header('X-QCache-stats', '{}={}'.format(key, value))
 
 
 @http_auth
@@ -132,10 +136,24 @@ class DatasetHandler(RequestHandler):
             return None
 
         key_values = []
-        for key_value in header_value.split(';'):
+        if ";" in header_value:
+            # This is left for backwards compatibility, requests should now use "," to separate multiple
+            # header values for the same header field.
+            keys_values = header_value.split(';')
+        else:
+            # This could be improved, it currently does not maintain quoted strings
+            # for example
+            keys_values = header_value.split(',')
+
+        for key_value in keys_values:
             key_values.append(tuple(s.strip() for s in key_value.split('=')))
 
         return key_values
+
+    def add_stats_header(self, result):
+        if isinstance(result, Result):
+            for k, v in result.stats.items():
+                add_stats_header(self, k, v)
 
     def dtypes(self):
         types = self.header_to_key_values('X-QCache-types')
@@ -178,6 +196,8 @@ class DatasetHandler(RequestHandler):
         else:
             raise Exception("Unknown query status: {}".format(result.status))
 
+        return result
+
     def q_json_to_dict(self, q_json):
         try:
             return json.loads(q_json)
@@ -196,14 +216,16 @@ class DatasetHandler(RequestHandler):
 
         q_dict = self.q_json_to_dict(self.get_argument('q', default=''))
         if q_dict is not None:
-            self.query(dataset_key, q_dict)
+            result = self.query(dataset_key, q_dict)
+            self.add_stats_header(result)
 
     @measured
     def post(self, dataset_key, optional_q):
         if optional_q:
             q_dict = self.q_json_to_dict(decoded_body(self.request))
             if q_dict is not None:
-                self.query(dataset_key, q_dict)
+                result = self.query(dataset_key, q_dict)
+                self.add_stats_header(result)
             return
 
         result = self.cache.insert(dataset_key=dataset_key,
@@ -211,6 +233,8 @@ class DatasetHandler(RequestHandler):
                                    content_type=self.content_type(),
                                    data_types=self.dtypes(),
                                    stand_in_columns=self.stand_in_columns())
+
+        self.add_stats_header(result)
 
         if result.status == InsertResult.STATUS_SUCCESS:
             self.set_status(ResponseCode.CREATED)
@@ -224,7 +248,8 @@ class DatasetHandler(RequestHandler):
             # There should not be a q parameter for the delete method
             raise HTTPError(ResponseCode.NOT_FOUND)
 
-        self.cache.delete(dataset_key)
+        result = self.cache.delete(dataset_key)
+        self.add_stats_header(result)
         self.write("")
 
 

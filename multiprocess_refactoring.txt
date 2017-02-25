@@ -1,13 +1,10 @@
 TODO
 ----
-- Add measurements and metrics to the different parts of the processing that are returned as
-  a header in the response.
 - Proper error handling if shard or l2 crashes
-- Fix status endpoint to check l2 cache if exists
 - Test what happens if worker process fails
 - Zmq errors
 - Measure L2 impact
-
+- More transport threads if L2 cache?
 
 Semantic differences
 --------------------
@@ -16,3 +13,5 @@ Semantic differences
   SQL.
 - Python 3. Aliases cannot be set to strings for the moment
   this may change in the future to be possible again.
+- Prefer using ',' to separate multiple values for the same header
+  instead of ';' which is deprecated and will be removed.

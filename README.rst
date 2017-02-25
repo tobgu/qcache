@@ -362,7 +362,7 @@ foo and bar are both typed to string.
 
 .. code::
 
-   X-QCache-types: foo=string;bar=string
+   X-QCache-types: foo=string,bar=string
 
 Explicitly setting the type to string is only relevant when submitting data in CSV. With JSON the data
 has an unambiguous (well...) data type that is used by QCache.
@@ -373,7 +373,7 @@ The `X-QCache-types` header can also be used to specify columns with enum types.
 
 .. code::
 
-   X-QCache-types: foo=enum;bar=enum
+   X-QCache-types: foo=enum,bar=enum
 
 Enums are a good way to store low cardinality string columns space efficiently. They can be compared
 for equality and inequality but currently do not have a well defined order so filtering by
@@ -393,7 +393,7 @@ This header can be used in request both for storing and querying data.
 
 .. code::
 
-   X-QCache-stand-in-columns: foo=10;bar=baz
+   X-QCache-stand-in-columns: foo=10,bar=baz
 
 
 Query requests
