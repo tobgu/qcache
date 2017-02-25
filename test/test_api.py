@@ -13,7 +13,7 @@ import qcache
 import qcache.app as app
 import csv
 
-from qcache.sharded_cache import ShardedCache
+from qcache.cache.sharded_cache import ShardedCache
 
 
 def to_json(data):

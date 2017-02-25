@@ -63,7 +63,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: CPython',
     ],
-    packages=["qcache", "qcache.qframe"],
+    packages=["qcache", "qcache.qframe", "qcache.cache"],
     entry_points={
         'console_scripts': [
             "qcache = qcache:main"

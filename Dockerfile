@@ -1,7 +1,6 @@
 FROM alpine:3.5
 
 COPY prepare_docker_image_alpine.sh .
-# COPY musl_patch .
 RUN ./prepare_docker_image_alpine.sh
 
 # TODO update this

@@ -3,11 +3,11 @@ from multiprocessing import Process
 
 import zmq
 
-from qcache.cache_common import InsertResult, DeleteResult
-from qcache.dataset_cache import DatasetCache
-from qcache.ipc import ProcessHandle, STOP_COMMAND, receive_serialized_objects, serialize_object, \
+from qcache.cache.cache_common import InsertResult, DeleteResult
+from qcache.cache.dataset_cache import DatasetCache
+from qcache.cache.ipc import ProcessHandle, STOP_COMMAND, receive_serialized_objects, serialize_object, \
     deserialize_object, send_serialized_objects, send_objects
-from qcache.statistics import Statistics
+from qcache.cache.statistics import Statistics
 
 
 class L2CacheException(Exception):

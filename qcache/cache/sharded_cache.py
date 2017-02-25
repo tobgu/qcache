@@ -7,17 +7,16 @@ import traceback
 from multiprocessing import Process
 import zmq
 
-from qcache.ipc import receive_object, ProcessHandle, STOP_COMMAND
-from qcache.ipc import send_object
-from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR
+from qcache.cache.ipc import receive_object, ProcessHandle, STOP_COMMAND, send_object
+from qcache.cache.cache_ring import NodeRing
+from qcache.cache.l2_cache import create_l2_cache, GetResult
+from qcache.cache.cache_common import QueryResult, InsertResult, DeleteResult
+from qcache.cache.dataset_cache import DatasetCache
+from qcache.cache.statistics import Statistics
 
-from qcache.cache_ring import NodeRing
+from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR
 from qcache.constants import CONTENT_TYPE_CSV, CONTENT_TYPE_JSON
-from qcache.dataset_cache import DatasetCache
-from qcache.l2_cache import create_l2_cache, GetResult
 from qcache.qframe import MalformedQueryException, QFrame
-from qcache.statistics import Statistics
-from qcache.cache_common import QueryResult, InsertResult, DeleteResult
 
 
 class ShardException(Exception):

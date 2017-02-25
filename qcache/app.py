@@ -9,11 +9,11 @@ from tornado import httpserver
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, HTTPError
 
-from qcache.cache_common import QueryResult, InsertResult
+from qcache.cache.cache_common import QueryResult, InsertResult
 from qcache.compression import CompressedContentEncoding, decoded_body
 from qcache.constants import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV
 from qcache.qframe import FILTER_ENGINE_NUMEXPR
-from qcache.sharded_cache import ShardedCache
+from qcache.cache.sharded_cache import ShardedCache
 
 
 class ResponseCode(object):

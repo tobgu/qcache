@@ -1,4 +1,4 @@
-from qcache.statistics import Statistics
+from qcache.cache.statistics import Statistics
 
 
 def test_ring_buffer_size():

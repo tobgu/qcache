@@ -13,4 +13,4 @@ if __name__ == '__main__':
         i += 1
 
     results.sort()
-    print "Median: %s, 90perc: %s, 99perc: %s" % (results[500], results[900], results[990])
+    print("Median: %s, 90perc: %s, 99perc: %s" % (results[500], results[900], results[990]))
