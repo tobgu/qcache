@@ -467,6 +467,12 @@ class TestL2Cache(SharedTest):
         stats = self.get_statistics()
         assert stats['l2_size_evict_count'] == 4
 
+    def test_l2_cache_status(self):
+        response = self.fetch('/status')
+
+        assert response.code == 200
+        assert response.body == b"OK"
+
 
 class TestL2CacheAge(SharedTest):
     @classmethod
