@@ -2,7 +2,7 @@ import gzip
 from io import BytesIO
 
 import lz4 as lz4
-from tornado.web import OutputTransform, RequestHandler, HTTPError
+from tornado.web import OutputTransform, HTTPError
 
 
 GZIP_LEVEL = 6

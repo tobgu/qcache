@@ -1,12 +1,6 @@
 from bisect import bisect
 import hashlib
 from math import ceil
-import sys
-
-if sys.version_info[0] >= 3:
-    _ord = lambda x: x
-else:
-    _ord = ord
 
 
 class NodeRing(object):
@@ -63,7 +57,7 @@ class NodeRing(object):
 def hash_digest(key):
     m = hashlib.md5()
     m.update(bytes(key.encode('utf-8')))
-    return [_ord(b) for b in m.digest()]
+    return [b for b in m.digest()]
 
 
 def generate_key(key):

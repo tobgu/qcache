@@ -103,7 +103,7 @@ class CacheShard(object):
         duration = time.time() - t0
         self.stats.append('query_durations', duration)
 
-        # TODO: Remove this one, it was not very interesting
+        # TODO: Remove this one, it was not very interesting only left for backwards compatibility
         self.stats.append('query_request_durations', duration+0.000001)
         return result
 
@@ -122,7 +122,7 @@ class CacheShard(object):
 
         duration = time.time() - t0
         self.stats.append('store_durations', duration)
-        # TODO: Remove this one, it was not very interesting
+        # TODO: Remove this one, it was not very interesting only left for backwards compatibility
         self.stats.append('store_request_durations', duration+0.000001)
 
         return InsertResult(status=InsertResult.STATUS_SUCCESS)
@@ -300,7 +300,10 @@ class ShardedCache(object):
         self.l2_cache.reset()
 
     def status(self):
-        if all(s == "OK" for s in self.run_command_on_all_shards(StatusCommand())):
-            return "OK"
+        if self.l2_cache.status() != "OK":
+            return "NOK"
 
-        return "NOK"
+        if not all(s == "OK" for s in self.run_command_on_all_shards(StatusCommand())):
+            return "NOK"
+
+        return "OK"

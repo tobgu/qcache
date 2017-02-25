@@ -84,6 +84,11 @@ class L2Cache(object):
 
 
 class NopL2CacheHandle(object):
+    """
+    L2 cache implementation with NOPs for all operations.
+
+    Used when L2 caching is not activated.
+    """
     def insert(self, dataset_key, data):
         return InsertResult(status=InsertResult.STATUS_SUCCESS)
 
@@ -195,7 +200,6 @@ def l2_cache_process(ipc_address, statistics_buffer_size, max_cache_size, max_ag
             command = deserialize_object(objects[0])
             input_data = None
             if len(objects) == 2:
-                # We'll see how this works out with a buffer when we need take the length of it
                 input_data = objects[1]
 
             if command == STOP_COMMAND:
