@@ -6,6 +6,7 @@ import time
 import zmq
 
 STOP_COMMAND = "stop"
+STATUS_OK = "OK"
 
 # TODO: Handle this: zmq.error.ZMQError: Operation cannot be accomplished in current state
 

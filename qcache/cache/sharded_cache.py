@@ -7,7 +7,7 @@ import traceback
 from multiprocessing import Process
 import zmq
 
-from qcache.cache.ipc import receive_object, ProcessHandle, STOP_COMMAND, send_object
+from qcache.cache.ipc import receive_object, ProcessHandle, STOP_COMMAND, send_object, STATUS_OK
 from qcache.cache.cache_ring import NodeRing
 from qcache.cache.l2_cache import create_l2_cache, GetResult
 from qcache.cache.cache_common import QueryResult, InsertResult, DeleteResult
@@ -137,7 +137,7 @@ class CacheShard(object):
         return stats
 
     def status(self):
-        return "OK"
+        return STATUS_OK
 
     def reset(self):
         self.dataset_cache.reset()
@@ -299,10 +299,10 @@ class ShardedCache(object):
         self.l2_cache.reset()
 
     def status(self):
-        if self.l2_cache.status() != "OK":
+        if self.l2_cache.status() != STATUS_OK:
             return "NOK"
 
-        if not all(s == "OK" for s in self.run_command_on_all_shards(StatusCommand())):
+        if not all(s == STATUS_OK for s in self.run_command_on_all_shards(StatusCommand())):
             return "NOK"
 
-        return "OK"
+        return STATUS_OK

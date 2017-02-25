@@ -6,7 +6,7 @@ import zmq
 from qcache.cache.cache_common import InsertResult, DeleteResult
 from qcache.cache.dataset_cache import DatasetCache
 from qcache.cache.ipc import ProcessHandle, STOP_COMMAND, receive_serialized_objects, serialize_object, \
-    deserialize_object, send_serialized_objects, send_objects
+    deserialize_object, send_serialized_objects, send_objects, STATUS_OK
 from qcache.cache.statistics import Statistics
 
 
@@ -75,7 +75,7 @@ class L2Cache(object):
         return stats
 
     def status(self):
-        return "OK"
+        return STATUS_OK
 
     def reset(self):
         self.dataset_cache.reset()
@@ -102,7 +102,7 @@ class NopL2CacheHandle(object):
         return {'l2_cache_size': 0, 'l2_dataset_count': 0}
 
     def status(self):
-        return "OK"
+        return STATUS_OK
 
     def reset(self):
         pass
