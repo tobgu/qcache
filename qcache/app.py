@@ -199,10 +199,13 @@ class DatasetHandler(RequestHandler):
         return result
 
     def q_json_to_dict(self, q_json):
+        if not q_json:
+            return {}
+
         try:
             return json.loads(q_json)
         except ValueError:
-            self.write(json.dumps({'error': 'Could not load JSON: {json}'.format(json=json)}))
+            self.write(json.dumps({'error': 'Could not load JSON: {json}'.format(json=q_json)}))
             self.set_status(ResponseCode.BAD_REQUEST)
 
         return None
