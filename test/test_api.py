@@ -385,7 +385,7 @@ class TestCacheEvictionOnSize(SharedTest):
         stats = self.get_statistics()
 
         assert stats['dataset_count'] == 1
-        assert stats['cache_size'] == 402
+        assert stats['cache_size'] == 338
         assert stats['hit_count'] == 2
         assert stats['miss_count'] == 1
         assert stats['size_evict_count'] == 1
@@ -448,7 +448,7 @@ class TestL2Cache(SharedTest):
         assert float(stats_string_to_kv(response.headers['X-QCache-stats'])['l2_execution_duration']) > 0.0
 
         stats = self.get_statistics()
-        assert stats['size_evict_count'] == 3
+        assert stats['size_evict_count'] == 2
         assert stats['l2_store_count'] == 6
         response = self.query_json('/dataset/aaa', {})
         assert response.code == 200

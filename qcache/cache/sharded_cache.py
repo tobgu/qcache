@@ -231,9 +231,7 @@ class ShardedCache(object):
         if content_type == CONTENT_TYPE_CSV:
             qf = QFrame.from_csv(data, column_types=data_types, stand_in_columns=stand_in_columns)
         else:
-            # TODO: Do this from JSON directly instead
-            data = json.loads(data)
-            qf = QFrame.from_dicts(data, stand_in_columns=stand_in_columns)
+            qf = QFrame.from_json(data, column_types=data_types, stand_in_columns=stand_in_columns)
 
         # Pre-calculate and cache the byte size here, to avoid having to do it in the cache.
         qf.byte_size()

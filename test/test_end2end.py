@@ -61,11 +61,11 @@ def get_query_stats(response):
 
 def test_e2e_dataset_key_match():
     with qcache(api_workers=3, cache_shards=3):
-        # Push 1000 datasets into cache and verify retrieving the dataset
+        # Push many datasets into cache and verify retrieving the dataset
         # returns the correct data. This is done to verify internal routing
         # to the different shards.
         t0 = time.time()
-        dataset_count = 1000
+        dataset_count = 100
         shard_time = 0
         for i in range(dataset_count):
             response = requests.post('http://localhost:8888/qcache/dataset/{}'.format(i),

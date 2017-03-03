@@ -53,8 +53,8 @@ class QFrame(object):
         return QFrame(df)
 
     @staticmethod
-    def from_dicts(d, column_types=None, stand_in_columns=None):
-        df = DataFrame.from_records(d)
+    def from_json(d, column_types=None, stand_in_columns=None):
+        df = pandas.read_json(d, orient='records', dtype=column_types)
 
         # Setting columns to categorials is slightly more awkward from dicts
         # than from CSV...

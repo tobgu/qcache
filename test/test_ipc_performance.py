@@ -1,3 +1,4 @@
+import json
 import time
 from contextlib import contextmanager
 from multiprocessing import Process
@@ -35,7 +36,7 @@ def subprocess(ipc_file_name):
 @pytest.fixture
 def large_csv_frame():
     d = 1000000 * [{'aaa': 123456789, 'bbb': 'abcdefghijklmnopqrvwxyz', 'ccc': 1.23456789}]
-    return QFrame.from_dicts(d).to_csv().encode('utf-8')
+    return QFrame.from_json(json.dumps(d)).to_csv().encode('utf-8')
 
 
 @contextmanager

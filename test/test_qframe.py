@@ -1,4 +1,5 @@
 # coding=utf-8
+import json
 from contextlib import contextmanager
 
 import pandas
@@ -411,10 +412,10 @@ ccc,""".encode('utf-8')
     assert_rows(frame, ['bbb'])
 
 
-def test_unicode_content_from_dicts():
+def test_unicode_content_from_json():
     data = [{'foo': 'aaa', 'bar': 'Iñtërnâtiônàližætiøn'},
             {'foo': 'bbb', 'bar': 'räksmörgås'}]
-    input_frame = QFrame.from_dicts(data)
+    input_frame = QFrame.from_json(json.dumps(data))
     frame = input_frame.query({'where': ["==", "bar", "'räksmörgås'"]})
 
     assert_rows(frame, ['bbb'])
@@ -633,9 +634,9 @@ def test_enum_size(enum_frame, enum_data):
     assert enum_frame.byte_size() < frame.byte_size()
 
 
-def test_enum_from_dicts(enum_frame):
-    cat_frame = QFrame.from_dicts(enum_frame.to_dicts(), column_types={'foo': 'category'})
-    frame = QFrame.from_dicts(enum_frame.to_dicts())
+def test_enum_from_json(enum_frame):
+    cat_frame = QFrame.from_json(enum_frame.to_json(), column_types={'foo': 'category'})
+    frame = QFrame.from_json(enum_frame.to_json())
 
     assert cat_frame.byte_size() < frame.byte_size()
 
@@ -721,7 +722,7 @@ def test_unknown_clause_in_query(basic_frame):
 @pytest.fixture
 def large_frame():
     d = [{'aaa': 123456789 + i, 'bbb': 'abcdefghijklmnopqrvwxyz' + str(i), 'ccc': 1.23456789 + i} for i in range(1000000)]
-    return QFrame.from_dicts(d)
+    return QFrame.from_json(json.dumps(d))
 
 
 @contextmanager
