@@ -66,7 +66,8 @@ def test_e2e_dataset_key_match():
         # to the different shards.
         t0 = time.time()
         dataset_count = 100
-        shard_time = 0
+        shard_duration = 0
+        request_duration = 0
         for i in range(dataset_count):
             response = requests.post('http://localhost:8888/qcache/dataset/{}'.format(i),
                                      data=json.dumps([{str(i): i}]),
@@ -74,13 +75,15 @@ def test_e2e_dataset_key_match():
             assert response.status_code == 201
 
             stats = get_query_stats(response)
-            shard_time += float(stats['shard_execution_duration'])
+            shard_duration += float(stats['shard_execution_duration'])
+            request_duration += float(stats['request_duration'])
 
-        print("Insert of {} datasets took: {} s, shard_time: {}".format(
-            dataset_count, time.time() - t0, shard_time))
+        print("Insert of {} datasets took: {} s, shard_duration: {}, request_duration: {}".format(
+            dataset_count, time.time() - t0, shard_duration, request_duration))
 
         t0 = time.time()
-        shard_time = 0
+        shard_duration = 0
+        request_duration = 0
         for i in range(dataset_count):
             response = requests.get('http://localhost:8888/qcache/dataset/{}'.format(i),
                                     headers={'Accept': 'application/json'})
@@ -88,10 +91,11 @@ def test_e2e_dataset_key_match():
             assert response.json() == [{str(i): i}]
 
             stats = get_query_stats(response)
-            shard_time += float(stats['shard_execution_duration'])
+            shard_duration += float(stats['shard_execution_duration'])
+            request_duration += float(stats['request_duration'])
 
-        print("Querying {} datasets took: {} s, shard_time: {}".format(
-            dataset_count, time.time() - t0, shard_time))
+        print("Querying {} datasets took: {} s, shard_time: {}, request_duration: {}".format(
+            dataset_count, time.time() - t0, shard_duration, request_duration))
 
 # TODO: Test killing various processes and see what happens
 #       Test using a session rather than individual requests and see what happens
