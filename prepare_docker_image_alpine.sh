@@ -27,6 +27,7 @@ pip3 install docopt==0.6.2
 pip3 install lz4==0.8.2
 pip3 install blosc==1.5.0
 pip3 install pyzmq==16.0.2
+pip3 install setproctitle==1.1.10
 pip3 install six
 
 # Remove packages and stuff installed in the previous steps. These are not needed to run QCache.

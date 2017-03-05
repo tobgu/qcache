@@ -1,6 +1,7 @@
 """
 Helpers for Process and Inter Process Communication (IPC).
 """
+import os
 import pickle
 
 import blosc
@@ -22,6 +23,14 @@ class ProcessHandle(object):
         self._ensure_socket()
         send_object(self.socket, STOP_COMMAND)
         self.process.join()
+
+    def is_alive(self):
+        try:
+            os.kill(self.process.pid, 0)
+        except OSError:
+            return False
+
+        return True
 
     def _ensure_socket(self):
         if self.socket is None:

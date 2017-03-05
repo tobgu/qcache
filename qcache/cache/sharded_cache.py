@@ -12,14 +12,14 @@ The cache consists of several parts:
   queried.
 """
 import collections
-import json
 import time
 
 import gc
 import traceback
 from multiprocessing import Process
-import zmq
 
+import zmq
+from setproctitle import setproctitle
 from qcache.cache.ipc import receive_object, ProcessHandle, STOP_COMMAND, send_object, STATUS_OK
 from qcache.cache.cache_ring import NodeRing
 from qcache.cache.l2_cache import create_l2_cache, GetResult
@@ -110,10 +110,11 @@ class CacheShard(object):
         self.stats.reset()
 
 
-def shard_process(ipc_address, statistics_buffer_size, max_cache_size, max_age):
+def shard_process(name, ipc_address, statistics_buffer_size, max_cache_size, max_age):
     """
     Function executing a cache shard server.
     """
+    setproctitle(name)
     context = zmq.Context()
     socket = context.socket(zmq.REP)
     socket.bind(ipc_address)
@@ -143,9 +144,9 @@ def spawn_shards(count, statistics_buffer_size, max_cache_size, max_age):
     shards = []
     for i in range(count):
         ipc_address = 'ipc:///tmp/qcache_ipc_{}'.format(i)
-        p = Process(name='qcache_shard_{}'.format(i),
-                    target=shard_process,
-                    args=(ipc_address, statistics_buffer_size, max_cache_size, max_age))
+        name = 'qcache_shard_{}'.format(i)
+        p = Process(target=shard_process,
+                    args=(name, ipc_address, statistics_buffer_size, max_cache_size, max_age))
         p.start()
         shards.append(ProcessHandle(process=p, ipc_address=ipc_address))
 
@@ -272,7 +273,7 @@ class ShardedCache(object):
         for shard in self.cache_shards:
             shard.stop()
 
-        zmq.Context.instance().destroy()
+        zmq.Context.instance(io_threads=2).destroy()
 
     def reset(self):
         # Currently only used for testing
@@ -280,11 +281,17 @@ class ShardedCache(object):
         self.l2_cache.reset()
 
     def status(self):
-        if self.l2_cache.status() != STATUS_OK:
-            return "NOK"
+        l2_status = self.l2_cache.status()
+        if l2_status != STATUS_OK:
+            return l2_status
 
-        if not all(s == STATUS_OK for s in self.run_command_on_all_shards(StatusCommand())):
-            return "NOK"
+        for shard in self.cache_shards:
+            if not shard.is_alive():
+                return "Cache shard process dead"
+
+        for s in self.run_command_on_all_shards(StatusCommand()):
+            if s != STATUS_OK:
+                return s
 
         return STATUS_OK
 

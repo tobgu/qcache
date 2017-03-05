@@ -262,10 +262,11 @@ class StatusHandler(RequestHandler):
         self.cache = cache
 
     def get(self):
-        if self.cache.status() == "OK":
+        status = self.cache.status()
+        if status == "OK":
             self.write("OK")
         else:
-            raise Exception("Caches not OK")
+            raise Exception("Cache not OK: {}".format(status))
 
 
 @http_auth

@@ -10,6 +10,7 @@ from multiprocessing import Process
 
 import time
 import zmq
+from setproctitle import setproctitle
 
 from qcache.cache.cache_common import InsertResult, DeleteResult, Result
 from qcache.cache.dataset_cache import DatasetMap
@@ -148,6 +149,9 @@ class L2CacheHandle(object):
         return self.run_command(StatisticsCommand())
 
     def status(self):
+        if not self.process_handle.is_alive():
+            return "L2 cache process dead"
+
         return self.run_command(StatusCommand())
 
     def reset(self):
@@ -161,6 +165,7 @@ def l2_cache_process(ipc_address, statistics_buffer_size, max_cache_size, max_ag
     """
     Function executing the Layer 2 cache server.
     """
+    setproctitle('qcache_l2_cache')
     context = zmq.Context()
     socket = context.socket(zmq.REP)
     socket.bind(ipc_address)

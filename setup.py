@@ -14,6 +14,7 @@ REQUIRES = [
     'lz4==0.8.2',
     'blosc==1.5.0',
     'pyzmq==16.0.2',
+    'setproctitle==1.1.10',
 ]
 
 
