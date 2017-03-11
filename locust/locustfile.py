@@ -35,8 +35,9 @@ class DataContainer(object):
 
 config_1 = dict(small_count=40, medium_count=0, large_count=0)
 config_2 = dict(small_count=40, medium_count=50, large_count=0)
+config_3 = dict(small_count=250, medium_count=250, large_count=0)
 
-data_container = DataContainer(**config_2)
+data_container = DataContainer(**config_3)
 
 
 class CacheClientBehavior(TaskSet):

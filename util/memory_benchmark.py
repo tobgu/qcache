@@ -73,6 +73,7 @@ SELECTION = ['aaaaaaaaaaaaaaaaaaa',
 SOME_NUMBER = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 11, 22, 33, 44, 55, 66, 77, 88, 99, 100,
                51, 52, 53, 54, 455, 56, 57, 58, 59, 50, 511, 522, 533, 544, 555, 566, 577, 588, 599, 5100]
 
+
 def example_data(length):
     out = StringIO()
     writer = csv.DictWriter(out, example_data_row.keys())
@@ -87,7 +88,7 @@ def example_data(length):
 
 
 def main():
-    print "Building datasets"
+    print("Building datasets")
     datasets = [example_data(l) for l in (1000, 5000, 10000, 20000, 50000, 100000, 200000, 400000)]
 
     latest_datasets = []
@@ -97,8 +98,8 @@ def main():
         t0 = time.time()
         response = requests.post("http://localhost:9401/qcache/dataset/{key}".format(key=key),
                                  headers={'Content-type': 'text/csv'}, data=ds)
-        print "Posted {key}={size}, response={response}, duration={duration}".format(
-            key=key, size=len(ds), response=response.status_code, duration=time.time()-t0)
+        print("Posted {key}={size}, response={response}, duration={duration}".format(
+            key=key, size=len(ds), response=response.status_code, duration=time.time()-t0))
 
         # Keep the last 40 inserted
         latest_datasets.append(key)
@@ -118,12 +119,12 @@ def main():
                                     params=params, headers={'Accept': 'application/json'})
 
             if response.status_code == 200:
-                print "Success length: {length}, duration: {duration}".format(
+                print("Success length: {length}, duration: {duration}".format(
                     status=response.status_code, length=len(json.loads(response.content)),
-                    duration=time.time()-t0)
+                    duration=time.time()-t0))
             else:
-                print "Response status: {status}, content: {content}, duration: {duration}".format(
-                    status=response.status_code, content=response.content, duration=time.time()-t0)
+                print("Response status: {status}, content: {content}, duration: {duration}".format(
+                    status=response.status_code, content=response.content, duration=time.time()-t0))
 
         time.sleep(0.5)
 

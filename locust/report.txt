@@ -53,3 +53,10 @@ qcache --api-workers=3 --cache-shards=2
 10 Users, Hatch rate 10, Config 2
 Median    Average   Lowest   Highest    Req/s
 410       909       10       5761       5.3
+
+
+Long running stability and resource usage test
+==============================================
+python setup.py install && qcache --api-workers=3 --statistics-buffer-size=10 --cache-shards=1 --size=500000000 --l2-cache-size=500000000
+
+config 3 was used. Stable memory consumption ~520 Mb L2 cache, ~600Mb in cache shard, ~350Mb in API workers.

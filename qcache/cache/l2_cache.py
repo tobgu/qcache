@@ -9,6 +9,8 @@ import traceback
 from multiprocessing import Process
 
 import time
+
+import gc
 import zmq
 from setproctitle import setproctitle
 
@@ -40,6 +42,7 @@ class L2Cache(object):
     def __init__(self, statistics_buffer_size, max_age, max_size):
         self.dataset_map = DatasetMap(max_age=max_age, max_size=max_size)
         self.stats = Statistics(buffer_size=statistics_buffer_size)
+        self.insert_count = 0
 
     def insert(self, dataset_key, data):
         if dataset_key in self.dataset_map:
@@ -52,6 +55,12 @@ class L2Cache(object):
         self.stats.inc('l2_size_evict_count', count=len(durations_until_eviction))
         self.stats.inc('l2_store_count')
         self.stats.extend('l2_durations_until_eviction', durations_until_eviction)
+        self.insert_count += 1
+        if self.insert_count % 10 == 0:
+            # Run a collect every now and then. It reduces the process memory consumption
+            # considerably but always doing it will impact performance negatively.
+            gc.collect()
+
         return InsertResult(status=InsertResult.STATUS_SUCCESS)
 
     def get(self, dataset_key):
@@ -122,8 +131,6 @@ class L2CacheHandle(object):
         self.process_handle = process_handle
 
     def insert(self, dataset_key, data):
-        # Get is the only method that actually sends two objects from the cache,
-        # the insert command and the actual data.
         serialized_insert = serialize_object(InsertCommand(dataset_key))
         self.process_handle.send_serialized_objects(serialized_insert, data)
         result, _ = self.process_handle.receive_objects()
