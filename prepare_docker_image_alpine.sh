@@ -1,6 +1,7 @@
 #!/bin/sh
 
-apk add --update python3-dev py3-pip wget alpine-sdk
+apk add --update wget alpine-sdk
+apk add python3-dev py3-pip --update-cache --repository http://nl.alpinelinux.org/alpine/edge/main
 
 # Build and install modified numpy that can handle larger queries
 wget --no-check-certificate https://pypi.python.org/packages/b7/9d/8209e555ea5eb8209855b6c9e60ea80119dab5eff5564330b35aa5dc4b2c/numpy-1.12.0.zip
@@ -8,7 +9,7 @@ unzip numpy-1.12.0.zip
 cd numpy-1.12.0
 sed -i '/#define NPY_MAXARGS 32/c\#define NPY_MAXARGS 256' numpy/core/include/numpy/ndarraytypes.h
 
-# See
+# For the below line, see:
 # http://serverfault.com/questions/771211/docker-alpine-and-matplotlib
 # https://github.com/docker-library/python/issues/112
 # https://wired-world.com/?p=100
@@ -20,8 +21,8 @@ cd ..
 rm -rf numpy*
 
 # Other pre-reqs
-pip3 install pandas==0.19.2
 pip3 install numexpr==2.6.2
+pip3 install pandas==0.19.2
 pip3 install tornado==4.4.2
 pip3 install docopt==0.6.2
 pip3 install lz4==0.8.2

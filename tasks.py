@@ -89,6 +89,10 @@ def build_image():
 
 
 @task
+def build_dev_image():
+    run("sudo docker build -f ./Dockerfile.dev -t tobgu/qcache:dev .")
+
+@task
 def push_image():
     run("sudo docker push tobgu/qcache:{version}".format(version=qcache_version))
     run("sudo docker push tobgu/qcache:latest")

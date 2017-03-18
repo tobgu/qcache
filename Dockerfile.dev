@@ -1,0 +1,13 @@
+FROM alpine:3.5
+
+COPY prepare_docker_image_alpine.sh .
+RUN ./prepare_docker_image_alpine.sh
+
+WORKDIR /app
+COPY . .
+RUN python3 setup.py install
+
+EXPOSE 9401
+ENV QCACHE_PORT 9401
+
+CMD [ "sh", "-c", "qcache -p $QCACHE_PORT"]
