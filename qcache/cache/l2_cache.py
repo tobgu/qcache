@@ -14,6 +14,8 @@ import gc
 import zmq
 from setproctitle import setproctitle
 
+from abc import ABCMeta, abstractmethod
+
 from qcache.cache.cache_common import InsertResult, DeleteResult, Result
 from qcache.cache.dataset_cache import DatasetMap
 from qcache.cache.ipc import ProcessHandle, STOP_COMMAND, receive_serialized_objects, serialize_object, \
@@ -95,7 +97,37 @@ class L2Cache(object):
         return None
 
 
-class NopL2CacheHandle(object):
+class AbstractL2CacheHandle(metaclass=ABCMeta):
+    @abstractmethod
+    def insert(self, dataset_key, data):
+        pass
+
+    @abstractmethod
+    def get(self, dataset_key):
+        pass
+
+    @abstractmethod
+    def delete(self, dataset_key):
+        pass
+
+    @abstractmethod
+    def statistics(self):
+        pass
+
+    @abstractmethod
+    def status(self):
+        pass
+
+    @abstractmethod
+    def reset(self):
+        pass
+
+    @abstractmethod
+    def stop(self):
+        pass
+
+
+class NopL2CacheHandle(AbstractL2CacheHandle):
     """
     L2 cache implementation with NOPs for all operations.
 
@@ -123,7 +155,7 @@ class NopL2CacheHandle(object):
         pass
 
 
-class L2CacheHandle(object):
+class L2CacheHandle(AbstractL2CacheHandle):
     """
     Client process API for communication with the L2 server process.
     """
@@ -201,7 +233,7 @@ def l2_cache_process(ipc_address, statistics_buffer_size, max_cache_size, max_ag
             traceback.print_exc()
 
 
-def create_l2_cache(statistics_buffer_size, max_age, max_size):
+def create_l2_cache(statistics_buffer_size: int, max_age: int, max_size: int) -> AbstractL2CacheHandle:
     """
     Create a layer 2 cache. Start server process and return a client side API
     object for interaction with the server side cache.

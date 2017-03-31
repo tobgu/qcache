@@ -4,3 +4,4 @@ pytest-cov
 flake8
 requests
 psutil
+mypy

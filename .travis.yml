@@ -13,6 +13,7 @@ install:
 # command to run tests, e.g. python setup.py test
 script:
   - invoke coverage
+  - invoke mypy
 
 before_install:
   - pip install codecov

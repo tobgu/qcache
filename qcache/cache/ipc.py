@@ -8,16 +8,17 @@ import blosc
 import time
 
 import zmq
+from multiprocessing import Process
 
 STOP_COMMAND = "stop"
 STATUS_OK = "OK"
 
 
 class ProcessHandle(object):
-    def __init__(self, process, ipc_address):
+    def __init__(self, process: Process, ipc_address: str) -> None:
         self.process = process
         self.ipc_address = ipc_address
-        self.socket = None
+        self.socket: zmq.Socket = None
 
     def stop(self):
         self._ensure_socket()

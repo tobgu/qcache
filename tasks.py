@@ -101,3 +101,8 @@ def push_image():
 @task
 def tag():
     run("git tag -fa v{version} -m 'v{version}'".format(version=qcache_version))
+
+
+@task
+def mypy():
+    run("mypy --ignore-missing-imports .")
