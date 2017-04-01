@@ -1,3 +1,5 @@
+from typing import Dict, Optional, List, Tuple
+
 import base64
 import functools
 import json
@@ -33,11 +35,11 @@ auth_user = None
 auth_password = None
 
 
-def auth_enabled():
+def auth_enabled() -> bool:
     return auth_user is not None and auth_password is not None
 
 
-def credentials_correct(provided_user, provided_password):
+def credentials_correct(provided_user, provided_password) -> bool:
     return provided_user == auth_user and provided_password == auth_password
 
 
@@ -54,7 +56,7 @@ def http_auth(handler_class):
         handler.finish()
 
     def wrap_execute(handler_execute):
-        def is_authenticated(handler):
+        def is_authenticated(handler) -> bool:
             if not auth_enabled():
                 return True
 
@@ -95,19 +97,19 @@ def measured(method):
     return _execute
 
 
-def add_stats_header(handler, key, value):
+def add_stats_header(handler, key: str, value: float):
     handler.add_header('X-QCache-stats', '{}={}'.format(key, value))
 
 
 @http_auth
 class DatasetHandler(RequestHandler):
-    def initialize(self, cache):
+    def initialize(self, cache: ShardedCache):
         self.cache = cache
 
     def prepare(self):
-        self.request_start = time.time()
+        self.request_start: float = time.time()
 
-    def accept_type(self):
+    def accept_type(self) -> str:
         accept_types = [t.strip() for t in self.request.headers.get('Accept', CONTENT_TYPE_JSON).split(',')]
         for t in accept_types:
             if t in ACCEPTED_TYPES:
@@ -115,7 +117,7 @@ class DatasetHandler(RequestHandler):
 
         raise HTTPError(ResponseCode.NOT_ACCEPTABLE)
 
-    def content_type(self):
+    def content_type(self) -> str:
         header = self.request.headers.get("Content-Type", CONTENT_TYPE_CSV).split(';')
         content_type = header[0]
         if content_type not in ACCEPTED_TYPES:
@@ -130,7 +132,7 @@ class DatasetHandler(RequestHandler):
 
         return content_type
 
-    def header_to_key_values(self, header_name):
+    def header_to_key_values(self, header_name: str) -> Optional[List[Tuple[str, ...]]]:
         header_value = self.request.headers.get(header_name, None)
         if not header_value:
             return None
@@ -155,7 +157,7 @@ class DatasetHandler(RequestHandler):
             for k, v in result.stats.items():
                 add_stats_header(self, k, v)
 
-    def dtypes(self):
+    def dtypes(self) -> Optional[Dict[str, str]]:
         types = self.header_to_key_values('X-QCache-types')
         if not types:
             return None
@@ -176,7 +178,7 @@ class DatasetHandler(RequestHandler):
     def stand_in_columns(self):
         return self.header_to_key_values('X-QCache-stand-in-columns')
 
-    def query(self, dataset_key, q):
+    def query(self, dataset_key: str, q: dict) -> QueryResult:
         accept_type = self.accept_type()
         result = self.cache.query(dataset_key=dataset_key,
                                   q=q,
@@ -198,7 +200,7 @@ class DatasetHandler(RequestHandler):
 
         return result
 
-    def q_json_to_dict(self, q_json):
+    def q_json_to_dict(self, q_json: str) -> Optional[dict]:
         if not q_json:
             return {}
 
@@ -211,7 +213,7 @@ class DatasetHandler(RequestHandler):
         return None
 
     @measured
-    def get(self, dataset_key, optional_q):
+    def get(self, dataset_key: str, optional_q: str):
         if optional_q:
             # There should not be a q URL for the GET method, it's supposed to take
             # q as a query parameter
@@ -223,7 +225,7 @@ class DatasetHandler(RequestHandler):
             self.add_stats_header(result)
 
     @measured
-    def post(self, dataset_key, optional_q):
+    def post(self, dataset_key: str, optional_q: str):
         if optional_q:
             q_dict = self.q_json_to_dict(decoded_body(self.request))
             if q_dict is not None:
@@ -246,7 +248,7 @@ class DatasetHandler(RequestHandler):
             raise Exception("Unknown insert status: {}".format(result.status))
 
     @measured
-    def delete(self, dataset_key, optional_q):
+    def delete(self, dataset_key: str, optional_q: str):
         if optional_q:
             # There should not be a q parameter for the delete method
             raise HTTPError(ResponseCode.NOT_FOUND)
@@ -258,7 +260,7 @@ class DatasetHandler(RequestHandler):
 
 @http_auth
 class StatusHandler(RequestHandler):
-    def initialize(self, cache):
+    def initialize(self, cache: ShardedCache):
         self.cache = cache
 
     def get(self):
@@ -271,7 +273,7 @@ class StatusHandler(RequestHandler):
 
 @http_auth
 class StatisticsHandler(RequestHandler):
-    def initialize(self, cache):
+    def initialize(self, cache: ShardedCache):
         self.cache = cache
 
     @measured
@@ -280,7 +282,7 @@ class StatisticsHandler(RequestHandler):
         self.write(json.dumps(self.cache.statistics()))
 
 
-def make_app(cache, url_prefix='/qcache', debug=False, basic_auth=None):
+def make_app(cache: ShardedCache, url_prefix: str='/qcache', debug: bool=False, basic_auth: Optional[str]=None):
     if basic_auth:
         global auth_user, auth_password
         auth_user, auth_password = basic_auth.split(':', 2)
@@ -301,7 +303,7 @@ def make_app(cache, url_prefix='/qcache', debug=False, basic_auth=None):
                        ], debug=debug, transforms=[CompressedContentEncoding])
 
 
-def ssl_options(certfile, cafile=None):
+def ssl_options(certfile: str, cafile: str=None) -> dict:
     if certfile:
         print("Enabling TLS")
         ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH, cafile=cafile)
@@ -315,18 +317,18 @@ def ssl_options(certfile, cafile=None):
     return {}
 
 
-def run(port=8888,
-        max_cache_size=1000000000,
-        max_age=0,
-        statistics_buffer_size=1000,
-        debug=False,
-        certfile=None,
-        cafile=None,
-        basic_auth=None,
-        default_filter_engine=FILTER_ENGINE_NUMEXPR,
-        api_workers=1,
-        cache_shards=1,
-        l2_cache_size=0):
+def run(port: int=8888,
+        max_cache_size: int=1000000000,
+        max_age: int=0,
+        statistics_buffer_size: int=1000,
+        debug: bool=False,
+        certfile: Optional[str]=None,
+        cafile: Optional[str]=None,
+        basic_auth: Optional[str]=None,
+        default_filter_engine: str=FILTER_ENGINE_NUMEXPR,
+        api_workers: int=1,
+        cache_shards: int=1,
+        l2_cache_size: int=0):
 
     if basic_auth and not certfile:
         print("TLS must be enabled to use basic auth!")
