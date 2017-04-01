@@ -32,7 +32,7 @@ from qcache.constants import CONTENT_TYPE_CSV, CONTENT_TYPE_JSON
 from qcache.qframe import MalformedQueryException, QFrame
 
 
-class CacheShard(object):
+class CacheShard:
     """
     Server side cache shard.
     """
@@ -153,7 +153,7 @@ def spawn_shards(count, statistics_buffer_size, max_cache_size, max_age):
     return shards
 
 
-class ShardedCache(object):
+class ShardedCache:
     """
     Cache client side API.
     """
@@ -300,7 +300,7 @@ class ShardedCache(object):
 # ###############################################################
 
 
-class QueryCommand(object):
+class QueryCommand:
     def __init__(self, dataset_key, q, filter_engine, stand_in_columns):
         self.dataset_key = dataset_key
         self.q = q
@@ -314,7 +314,7 @@ class QueryCommand(object):
                                  stand_in_columns=self.stand_in_columns)
 
 
-class InsertCommand(object):
+class InsertCommand:
     def __init__(self, dataset_key, qf):
         self.dataset_key = dataset_key
         self.qf = qf
@@ -323,7 +323,7 @@ class InsertCommand(object):
         return cache_shard.insert(dataset_key=self.dataset_key, qf=self.qf)
 
 
-class DeleteCommand(object):
+class DeleteCommand:
     def __init__(self, dataset_key):
         self.dataset_key = dataset_key
 
@@ -331,16 +331,16 @@ class DeleteCommand(object):
         return cache_shard.delete(self.dataset_key)
 
 
-class StatsCommand(object):
+class StatsCommand:
     def execute(self, cache_shard):
         return cache_shard.statistics()
 
 
-class ResetCommand(object):
+class ResetCommand:
     def execute(self, cache_shard):
         return cache_shard.reset()
 
 
-class StatusCommand(object):
+class StatusCommand:
     def execute(self, cache_shard):
         return cache_shard.status()

@@ -6,7 +6,7 @@ from time import time
 from typing import Sized
 
 
-class MapItem(object):
+class MapItem:
     def __init__(self, dataset):
         self.creation_time = time()
         self.last_access_time = self.creation_time

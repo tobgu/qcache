@@ -2,11 +2,11 @@ from qcache.qframe.common import raise_malformed, assert_list, assert_len, prepa
 from qcache.qframe.constants import JOINING_OPERATORS, COMPARISON_OPERATORS, FILTER_ENGINE_NUMEXPR
 
 
-class Env(object):
+class Env:
     pass
 
 
-class Filter(object):
+class Filter:
     def __init__(self):
         self.env_counter = 0
         self.env = Env()

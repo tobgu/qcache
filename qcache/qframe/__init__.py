@@ -35,7 +35,7 @@ def _add_stand_in_columns(df, stand_in_columns):
                 df.loc[:, column_name] = pandas.Series(arr, index=df.index)
 
 
-class QFrame(object):
+class QFrame:
     """
     Thin wrapper around a Pandas dataframe.
     """

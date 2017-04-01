@@ -3,7 +3,7 @@ Results returned from server processes to clients.
 """
 
 
-class Result(object):
+class Result:
     def __init__(self):
         self.stats = {}
 

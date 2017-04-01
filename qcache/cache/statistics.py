@@ -3,7 +3,7 @@ from typing import Iterable, Dict, Any
 import time
 
 
-class Statistics(object):
+class Statistics:
     stats: Dict[str, Any]
 
     def __init__(self, buffer_size: int) -> None:

@@ -16,7 +16,7 @@ from qcache.qframe import FILTER_ENGINE_NUMEXPR
 from qcache.cache.sharded_cache import ShardedCache
 
 
-class ResponseCode(object):
+class ResponseCode:
     OK = 200
     CREATED = 201
 

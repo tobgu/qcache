@@ -3,7 +3,7 @@ import hashlib
 from math import ceil
 
 
-class NodeRing(object):
+class NodeRing:
     def __init__(self, nodes, weights=None, virtual_count=None):
         assert nodes
 
