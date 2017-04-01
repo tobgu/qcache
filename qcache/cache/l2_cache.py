@@ -23,6 +23,63 @@ from qcache.cache.ipc import ProcessHandle, STOP_COMMAND, receive_serialized_obj
 from qcache.cache.statistics import Statistics
 
 
+# ##################################################################
+# ### Commands sent from L2 client process to the server process ###
+# ##################################################################
+
+class DatasetCommand(object):
+    def __init__(self, dataset_key):
+        self.dataset_key = dataset_key
+
+
+class InsertCommand(DatasetCommand):
+    def execute(self, l2cache, data):
+        return l2cache.insert(self.dataset_key, data)
+
+
+class GetCommand(DatasetCommand):
+    def execute(self, l2cache, _):
+        return l2cache.get(self.dataset_key)
+
+
+class DeleteCommand(DatasetCommand):
+    def execute(self, l2cache, _):
+        return l2cache.delete(self.dataset_key)
+
+
+class StatisticsCommand(object):
+    def execute(self, l2cache, _):
+        return l2cache.statistics()
+
+
+class StatusCommand(object):
+    def execute(self, l2cache, _):
+        return l2cache.status()
+
+
+class ResetCommnad(object):
+    def execute(self, l2cache, _):
+        return l2cache.reset()
+
+
+# #####################################################################
+# ### Results returned from L2 server process to the client process ###
+# #####################################################################
+
+class GetResult(Result):
+    STATUS_NOT_FOUND = "not_found"
+    STATUS_SUCCESS = "success"
+
+    def __init__(self, status):
+        self.status = status
+        self.data = None
+        super().__init__()
+
+
+# #############
+# ### Cache ###
+# #############
+
 class DataWrapper(object):
     """
     Thin wrapper around an object that supports the "len()" to make it compatible
@@ -41,12 +98,12 @@ class L2Cache(object):
     """
     Layer 2 cache server process logic.
     """
-    def __init__(self, statistics_buffer_size, max_age, max_size):
+    def __init__(self, statistics_buffer_size: int, max_age: int, max_size: int) -> None:
         self.dataset_map = DatasetMap(max_age=max_age, max_size=max_size)
         self.stats = Statistics(buffer_size=statistics_buffer_size)
         self.insert_count = 0
 
-    def insert(self, dataset_key, data):
+    def insert(self, dataset_key: str, data) -> InsertResult:
         if dataset_key in self.dataset_map:
             self.stats.inc('l2_replace_count')
             del self.dataset_map[dataset_key]
@@ -65,7 +122,7 @@ class L2Cache(object):
 
         return InsertResult(status=InsertResult.STATUS_SUCCESS)
 
-    def get(self, dataset_key):
+    def get(self, dataset_key: str):
         if dataset_key not in self.dataset_map:
             self.stats.inc('l2_miss_count')
             return GetResult(status=GetResult.STATUS_NOT_FOUND)
@@ -78,20 +135,20 @@ class L2Cache(object):
         self.stats.inc('l2_hit_count')
         return GetResult(status=GetResult.STATUS_SUCCESS), self.dataset_map[dataset_key].data
 
-    def delete(self, dataset_key):
+    def delete(self, dataset_key: str) -> DeleteResult:
         self.dataset_map.delete(dataset_key)
         return DeleteResult(status=DeleteResult.STATUS_SUCCESS)
 
-    def statistics(self):
+    def statistics(self) -> dict:
         stats = self.stats.snapshot()
         stats['l2_dataset_count'] = len(self.dataset_map)
         stats['l2_cache_size'] = self.dataset_map.size
         return stats
 
-    def status(self):
+    def status(self) -> str:
         return STATUS_OK
 
-    def reset(self):
+    def reset(self) -> None:
         self.dataset_map.reset()
         self.stats.reset()
         return None
@@ -99,31 +156,31 @@ class L2Cache(object):
 
 class AbstractL2CacheHandle(metaclass=ABCMeta):
     @abstractmethod
-    def insert(self, dataset_key, data):
+    def insert(self, dataset_key: str, data):
         pass
 
     @abstractmethod
-    def get(self, dataset_key):
+    def get(self, dataset_key: str):
         pass
 
     @abstractmethod
-    def delete(self, dataset_key):
+    def delete(self, dataset_key: str):
         pass
 
     @abstractmethod
-    def statistics(self):
+    def statistics(self) -> dict:
         pass
 
     @abstractmethod
-    def status(self):
+    def status(self) -> str:
         pass
 
     @abstractmethod
-    def reset(self):
+    def reset(self) -> None:
         pass
 
     @abstractmethod
-    def stop(self):
+    def stop(self) -> None:
         pass
 
 
@@ -133,13 +190,13 @@ class NopL2CacheHandle(AbstractL2CacheHandle):
 
     Used when L2 caching is not activated.
     """
-    def insert(self, dataset_key, data):
+    def insert(self, dataset_key: str, data):
         return InsertResult(status=InsertResult.STATUS_SUCCESS)
 
-    def get(self, dataset_key):
+    def get(self, dataset_key: str):
         return GetResult(status=GetResult.STATUS_NOT_FOUND)
 
-    def delete(self, dataset_key):
+    def delete(self, dataset_key: str):
         return DeleteResult(status=DeleteResult.STATUS_SUCCESS)
 
     def statistics(self):
@@ -247,56 +304,3 @@ def create_l2_cache(statistics_buffer_size: int, max_age: int, max_size: int) ->
                 args=(ipc_address, statistics_buffer_size, max_size, max_age))
     p.start()
     return L2CacheHandle(ProcessHandle(p, ipc_address))
-
-
-# ##################################################################
-# ### Commands sent from L2 client process to the server process ###
-# ##################################################################
-
-class DatasetCommand(object):
-    def __init__(self, dataset_key):
-        self.dataset_key = dataset_key
-
-
-class InsertCommand(DatasetCommand):
-    def execute(self, l2cache, data):
-        return l2cache.insert(self.dataset_key, data)
-
-
-class GetCommand(DatasetCommand):
-    def execute(self, l2cache, _):
-        return l2cache.get(self.dataset_key)
-
-
-class DeleteCommand(DatasetCommand):
-    def execute(self, l2cache, _):
-        return l2cache.delete(self.dataset_key)
-
-
-class StatisticsCommand(object):
-    def execute(self, l2cache, _):
-        return l2cache.statistics()
-
-
-class StatusCommand(object):
-    def execute(self, l2cache, _):
-        return l2cache.status()
-
-
-class ResetCommnad(object):
-    def execute(self, l2cache, _):
-        return l2cache.reset()
-
-
-# #####################################################################
-# ### Results returned from L2 server process to the client process ###
-# #####################################################################
-
-class GetResult(Result):
-    STATUS_NOT_FOUND = "not_found"
-    STATUS_SUCCESS = "success"
-
-    def __init__(self, status):
-        self.status = status
-        self.data = None
-        super().__init__()

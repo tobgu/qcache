@@ -3,6 +3,7 @@ Map from key to dataset. Keeps track and evicts datasets that no longer
 fit or that are too old.
 """
 from time import time
+from typing import Sized
 
 
 class MapItem(object):
@@ -19,19 +20,19 @@ class MapItem(object):
         return self._dataset
 
     @property
-    def size(self):
+    def size(self) -> int:
         # 100 bytes is just a very rough estimate of the object overhead of this instance
         size = 100 + self._dataset.byte_size()
         return size
 
 
-class DatasetMap(object):
-    def __init__(self, max_size, max_age):
+class DatasetMap(Sized):
+    def __init__(self, max_size: int, max_age: int) -> None:
         self.max_size = max_size
         self.max_age = max_age
         self.reset()
 
-    def has_expired(self, item):
+    def has_expired(self, item) -> bool:
         return self.max_age and time() > item.creation_time + self.max_age
 
     def evict_if_too_old(self, key):
@@ -45,18 +46,18 @@ class DatasetMap(object):
         self._cache_dict = {}
         self.size = 0.0
 
-    def __contains__(self, key):
+    def __contains__(self, key) -> bool:
         return key in self._cache_dict
 
     def __getitem__(self, item):
         return self._cache_dict[item].dataset
 
-    def __setitem__(self, key, qframe):
+    def __setitem__(self, key, item):
         current_size = 0.0
         if key in self._cache_dict:
             current_size = self._cache_dict[key].size
 
-        new_item = MapItem(qframe)
+        new_item = MapItem(item)
         self.size += new_item.size - current_size
         self._cache_dict[key] = new_item
 
@@ -64,14 +65,14 @@ class DatasetMap(object):
         self.size -= self._cache_dict[key].size
         del self._cache_dict[key]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._cache_dict)
 
     def delete(self, key):
         if key in self:
             del self[key]
 
-    def ensure_free(self, byte_count):
+    def ensure_free(self, byte_count: int):
         """
         :return: A list of durations in seconds that the dataset spent in the cache before
                  being evicted.
