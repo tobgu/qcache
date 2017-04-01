@@ -1,7 +1,7 @@
 FROM alpine:3.5
 
-COPY prepare_docker_image_alpine.sh .
-RUN ./prepare_docker_image_alpine.sh
+COPY prepare_docker_image_alpine_dev.sh .
+RUN ./prepare_docker_image_alpine_dev.sh
 
 WORKDIR /app
 COPY . .

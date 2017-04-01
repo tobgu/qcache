@@ -9,7 +9,7 @@ REQUIRES = [
     'docopt==0.6.2',
     'numexpr==2.6.2',
     'numpy==1.12.0',
-    'pandas==0.19.2',
+    'pandas>=0.19.0',
     'tornado==4.4.2',
     'lz4==0.8.2',
     'blosc==1.5.0',
