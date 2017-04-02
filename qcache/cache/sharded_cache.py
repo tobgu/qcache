@@ -31,17 +31,72 @@ from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR
 from qcache.constants import CONTENT_TYPE_CSV, CONTENT_TYPE_JSON
 from qcache.qframe import MalformedQueryException, QFrame
 
+# ###############################################################
+# ### Commands sent from client to cache shard server process ###
+# ###############################################################
+
+
+class QueryCommand:
+    def __init__(self, dataset_key: str, q: dict, filter_engine: str, stand_in_columns: dict) -> None:
+        self.dataset_key = dataset_key
+        self.q = q
+        self.filter_engine = filter_engine
+        self.stand_in_columns = stand_in_columns
+
+    def execute(self, cache_shard):
+        return cache_shard.query(dataset_key=self.dataset_key,
+                                 q=self.q,
+                                 filter_engine=self.filter_engine,
+                                 stand_in_columns=self.stand_in_columns)
+
+
+class InsertCommand:
+    def __init__(self, dataset_key: str, qf: QFrame) -> None:
+        self.dataset_key = dataset_key
+        self.qf = qf
+
+    def execute(self, cache_shard: 'CacheShard'):
+        return cache_shard.insert(dataset_key=self.dataset_key, qf=self.qf)
+
+
+class DeleteCommand:
+    def __init__(self, dataset_key: str) -> None:
+        self.dataset_key = dataset_key
+
+    def execute(self, cache_shard: 'CacheShard'):
+        return cache_shard.delete(self.dataset_key)
+
+
+class StatsCommand:
+    def execute(self, cache_shard: 'CacheShard'):
+        return cache_shard.statistics()
+
+
+class ResetCommand:
+    def execute(self, cache_shard: 'CacheShard'):
+        return cache_shard.reset()
+
+
+class StatusCommand:
+    def execute(self, cache_shard: 'CacheShard'):
+        return cache_shard.status()
+
+
+# ############
+# ## Cache ###
+# ############
+
 
 class CacheShard:
     """
     Server side cache shard.
     """
-    def __init__(self, statistics_buffer_size, max_cache_size, max_age):
+    def __init__(self, statistics_buffer_size: int, max_cache_size: int, max_age: int) -> None:
         self.stats = Statistics(buffer_size=statistics_buffer_size)
         self.dataset_map = DatasetMap(max_size=max_cache_size, max_age=max_age)
         self.query_count = 0
 
-    def query(self, dataset_key, q, filter_engine, stand_in_columns):
+    def query(self, dataset_key: str, q: dict, filter_engine: str, stand_in_columns: dict) -> QueryResult:
         t0 = time.time()
         if dataset_key not in self.dataset_map:
             self.stats.inc('miss_count')
@@ -72,7 +127,7 @@ class CacheShard:
         self.stats.append('query_request_durations', duration+0.000001)
         return result
 
-    def insert(self, dataset_key, qf):
+    def insert(self, dataset_key: str, qf: QFrame) -> InsertResult:
         t0 = time.time()
         if dataset_key in self.dataset_map:
             self.stats.inc('replace_count')
@@ -92,17 +147,17 @@ class CacheShard:
 
         return InsertResult(status=InsertResult.STATUS_SUCCESS)
 
-    def delete(self, dataset_key):
+    def delete(self, dataset_key: str) -> DeleteResult:
         self.dataset_map.delete(dataset_key)
         return DeleteResult(status=DeleteResult.STATUS_SUCCESS)
 
-    def statistics(self):
+    def statistics(self) -> dict:
         stats = self.stats.snapshot()
         stats['dataset_count'] = len(self.dataset_map)
         stats['cache_size'] = self.dataset_map.size
         return stats
 
-    def status(self):
+    def status(self) -> str:
         return STATUS_OK
 
     def reset(self):
@@ -110,7 +165,7 @@ class CacheShard:
         self.stats.reset()
 
 
-def shard_process(name, ipc_address, statistics_buffer_size, max_cache_size, max_age):
+def shard_process(name: str, ipc_address: str, statistics_buffer_size: int, max_cache_size: int, max_age: int):
     """
     Function executing a cache shard server.
     """
@@ -136,7 +191,7 @@ def shard_process(name, ipc_address, statistics_buffer_size, max_cache_size, max
             traceback.print_exc()
 
 
-def spawn_shards(count, statistics_buffer_size, max_cache_size, max_age):
+def spawn_shards(count: int, statistics_buffer_size: int, max_cache_size: int, max_age: int):
     """
     Start requested number of cache shard servers and return client side handles to
     the servers.
@@ -158,19 +213,19 @@ class ShardedCache:
     Cache client side API.
     """
     def __init__(self,
-                 statistics_buffer_size=1000,
-                 max_cache_size=1000000000,
-                 max_age=0,
-                 default_filter_engine=FILTER_ENGINE_NUMEXPR,
-                 shard_count=1,
-                 l2_cache_size=0):
+                 statistics_buffer_size: int=1000,
+                 max_cache_size: int=1000000000,
+                 max_age: int=0,
+                 default_filter_engine: str=FILTER_ENGINE_NUMEXPR,
+                 shard_count: int=1,
+                 l2_cache_size: int=0) -> None:
         self.query_count = 0
         self.default_filter_engine = default_filter_engine
         self.max_age = max_age
         self.cache_ring = NodeRing(range(shard_count))
         self.cache_shards = spawn_shards(shard_count,
                                          statistics_buffer_size,
-                                         max_cache_size / shard_count,
+                                         int(max_cache_size / shard_count),
                                          max_age)
         self.l2_cache = create_l2_cache(statistics_buffer_size, max_age, l2_cache_size)
 
@@ -182,17 +237,17 @@ class ShardedCache:
 
         self.query_count += 1
 
-    def shard_for_dataset(self, dataset_key):
+    def _shard_for_dataset(self, dataset_key: str):
         shard_id = self.cache_ring.get_node(dataset_key)
         return self.cache_shards[shard_id]
 
-    def run_command(self, command):
-        shard = self.shard_for_dataset(command.dataset_key)
+    def _run_command(self, command):
+        shard = self._shard_for_dataset(command.dataset_key)
         input_data = shard.send_object(command)
         result, _ = shard.receive_object()
         return result, input_data
 
-    def run_command_on_all_shards(self, command):
+    def _run_command_on_all_shards(self, command):
         results = []
         for shard in self.cache_shards:
             shard.send_object(command)
@@ -201,14 +256,14 @@ class ShardedCache:
 
         return results
 
-    def _do_query(self, command, accept_type):
-        result, _ = self.run_command(command)
+    def _do_query(self, command: QueryCommand, accept_type: str):
+        result, _ = self._run_command(command)
         if result.status == QueryResult.STATUS_SUCCESS:
             result.data = result.data.to_json() if accept_type == CONTENT_TYPE_JSON else result.data.to_csv()
             result.content_type = accept_type
         return result
 
-    def query(self, dataset_key, q, filter_engine, stand_in_columns, accept_type):
+    def query(self, dataset_key: str, q: dict, filter_engine: str, stand_in_columns: dict, accept_type: str):
         filter_engine = filter_engine or self.default_filter_engine
         command = QueryCommand(dataset_key=dataset_key,
                                q=q,
@@ -219,7 +274,7 @@ class ShardedCache:
         if result.status == QueryResult.STATUS_NOT_FOUND:
             get_result = self.l2_cache.get(dataset_key)
             if get_result.status == GetResult.STATUS_SUCCESS:
-                shard = self.shard_for_dataset(dataset_key)
+                shard = self._shard_for_dataset(dataset_key)
                 shard.send_serialized_object(get_result.data)
                 result, _ = shard.receive_object()
                 query_result = self._do_query(command, accept_type)
@@ -228,7 +283,7 @@ class ShardedCache:
 
         return result
 
-    def insert(self, dataset_key, data, content_type, data_types, stand_in_columns):
+    def insert(self, dataset_key: str, data: str, content_type: str, data_types: dict, stand_in_columns: dict):
         if content_type == CONTENT_TYPE_CSV:
             qf = QFrame.from_csv(data, column_types=data_types, stand_in_columns=stand_in_columns)
         else:
@@ -237,22 +292,22 @@ class ShardedCache:
         # Pre-calculate and cache the byte size here, to avoid having to do it in the cache.
         qf.byte_size()
 
-        shard = self.shard_for_dataset(dataset_key)
+        shard = self._shard_for_dataset(dataset_key)
         input_data = shard.send_object(InsertCommand(dataset_key=dataset_key, qf=qf))
         l2_result = self.l2_cache.insert(dataset_key, input_data)
         result, _ = shard.receive_object()
         result.stats.update(l2_result.stats)
         return result
 
-    def delete(self, dataset_key):
+    def delete(self, dataset_key: str):
         l2_result = self.l2_cache.delete(dataset_key)
-        result, _ = self.run_command(DeleteCommand(dataset_key=dataset_key))
+        result, _ = self._run_command(DeleteCommand(dataset_key=dataset_key))
         result.stats.update(l2_result.stats)
         return result
 
-    def statistics(self):
+    def statistics(self) -> dict:
         stats = self.l2_cache.statistics()
-        results = self.run_command_on_all_shards(StatsCommand())
+        results = self._run_command_on_all_shards(StatsCommand())
 
         # Merge statistics from the different shards
         for result in results:
@@ -277,10 +332,10 @@ class ShardedCache:
 
     def reset(self):
         # Currently only used for testing
-        self.run_command_on_all_shards(ResetCommand())
+        self._run_command_on_all_shards(ResetCommand())
         self.l2_cache.reset()
 
-    def status(self):
+    def status(self) -> str:
         l2_status = self.l2_cache.status()
         if l2_status != STATUS_OK:
             return l2_status
@@ -289,58 +344,8 @@ class ShardedCache:
             if not shard.is_alive():
                 return "Cache shard process dead"
 
-        for s in self.run_command_on_all_shards(StatusCommand()):
+        for s in self._run_command_on_all_shards(StatusCommand()):
             if s != STATUS_OK:
                 return s
 
         return STATUS_OK
-
-# ###############################################################
-# ### Commands sent from client to cache shard server process ###
-# ###############################################################
-
-
-class QueryCommand:
-    def __init__(self, dataset_key, q, filter_engine, stand_in_columns):
-        self.dataset_key = dataset_key
-        self.q = q
-        self.filter_engine = filter_engine
-        self.stand_in_columns = stand_in_columns
-
-    def execute(self, cache_shard):
-        return cache_shard.query(dataset_key=self.dataset_key,
-                                 q=self.q,
-                                 filter_engine=self.filter_engine,
-                                 stand_in_columns=self.stand_in_columns)
-
-
-class InsertCommand:
-    def __init__(self, dataset_key, qf):
-        self.dataset_key = dataset_key
-        self.qf = qf
-
-    def execute(self, cache_shard):
-        return cache_shard.insert(dataset_key=self.dataset_key, qf=self.qf)
-
-
-class DeleteCommand:
-    def __init__(self, dataset_key):
-        self.dataset_key = dataset_key
-
-    def execute(self, cache_shard):
-        return cache_shard.delete(self.dataset_key)
-
-
-class StatsCommand:
-    def execute(self, cache_shard):
-        return cache_shard.statistics()
-
-
-class ResetCommand:
-    def execute(self, cache_shard):
-        return cache_shard.reset()
-
-
-class StatusCommand:
-    def execute(self, cache_shard):
-        return cache_shard.status()
