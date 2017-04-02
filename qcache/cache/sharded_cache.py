@@ -11,6 +11,9 @@ The cache consists of several parts:
   of access time since the data must be moved from the L2 cache to the primary cache before being
   queried.
 """
+from typing import List
+from typing import Optional, Tuple
+
 import collections
 import time
 
@@ -29,7 +32,8 @@ from qcache.cache.statistics import Statistics
 
 from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR
 from qcache.constants import CONTENT_TYPE_CSV, CONTENT_TYPE_JSON
-from qcache.qframe import MalformedQueryException, QFrame
+from qcache.qframe import MalformedQueryException, QFrame, StandInColumns
+
 
 # ###############################################################
 # ### Commands sent from client to cache shard server process ###
@@ -37,7 +41,7 @@ from qcache.qframe import MalformedQueryException, QFrame
 
 
 class QueryCommand:
-    def __init__(self, dataset_key: str, q: dict, filter_engine: str, stand_in_columns: dict) -> None:
+    def __init__(self, dataset_key: str, q: dict, filter_engine: str, stand_in_columns: StandInColumns) -> None:
         self.dataset_key = dataset_key
         self.q = q
         self.filter_engine = filter_engine
@@ -96,7 +100,7 @@ class CacheShard:
         self.dataset_map = DatasetMap(max_size=max_cache_size, max_age=max_age)
         self.query_count = 0
 
-    def query(self, dataset_key: str, q: dict, filter_engine: str, stand_in_columns: dict) -> QueryResult:
+    def query(self, dataset_key: str, q: dict, filter_engine: str, stand_in_columns: StandInColumns) -> QueryResult:
         t0 = time.time()
         if dataset_key not in self.dataset_map:
             self.stats.inc('miss_count')
@@ -264,7 +268,7 @@ class ShardedCache:
             result.content_type = accept_type
         return result
 
-    def query(self, dataset_key: str, q: dict, filter_engine: str, stand_in_columns: dict, accept_type: str):
+    def query(self, dataset_key: str, q: dict, filter_engine: str, stand_in_columns: Optional[List[Tuple[str, ...]]], accept_type: str):
         filter_engine = filter_engine or self.default_filter_engine
         command = QueryCommand(dataset_key=dataset_key,
                                q=q,
@@ -284,7 +288,7 @@ class ShardedCache:
 
         return result
 
-    def insert(self, dataset_key: str, data: str, content_type: str, data_types: dict, stand_in_columns: dict):
+    def insert(self, dataset_key: str, data: bytes, content_type: str, data_types: dict, stand_in_columns: StandInColumns):
         if content_type == CONTENT_TYPE_CSV:
             qf = QFrame.from_csv(data, column_types=data_types, stand_in_columns=stand_in_columns)
         else:

@@ -7,16 +7,17 @@ from tornado.web import OutputTransform, HTTPError
 
 GZIP_LEVEL = 6
 
-def gzip_dumps(string):
+
+def gzip_dumps(data: bytes) -> bytes:
     buffer = BytesIO()
     file = gzip.GzipFile(mode='w', fileobj=buffer, compresslevel=GZIP_LEVEL)
-    file.write(string)
+    file.write(data)
     file.close()
     return buffer.getvalue()
 
 
-def gzip_loads(string):
-    buffer = BytesIO(string)
+def gzip_loads(data: bytes) -> bytes:
+    buffer = BytesIO(data)
     file = gzip.GzipFile(mode='r', fileobj=buffer)
     return file.read()
 

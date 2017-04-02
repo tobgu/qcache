@@ -132,7 +132,7 @@ class DatasetHandler(RequestHandler):
 
         return content_type
 
-    def header_to_key_values(self, header_name: str) -> Optional[List[Tuple[str, ...]]]:
+    def  header_to_key_values(self, header_name: str) -> Optional[List[Tuple[str, ...]]]:
         header_value = self.request.headers.get(header_name, None)
         if not header_value:
             return None

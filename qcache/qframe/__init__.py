@@ -1,4 +1,4 @@
-from typing import Sized
+from typing import Sized, Optional, List, Tuple, Any
 
 import io
 
@@ -12,7 +12,7 @@ from qcache.qframe.update import update_frame
 from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR
 
 
-def convert_if_number(obj):
+def convert_if_number(obj: Any) -> Any:
     for fn in int, float:
         try:
             return fn(obj)
@@ -21,8 +21,10 @@ def convert_if_number(obj):
 
     return obj
 
+StandInColumns = Optional[List[Tuple[str, ...]]]
 
-def _add_stand_in_columns(df, stand_in_columns):
+
+def _add_stand_in_columns(df: DataFrame, stand_in_columns: StandInColumns):
     if not stand_in_columns:
         return df
 
@@ -43,20 +45,20 @@ class QFrame(Sized):
     """
     __slots__ = ('df', 'unsliced_df_len', '_byte_size')
 
-    def __init__(self, pandas_df, unsliced_df_len=None):
+    def __init__(self, pandas_df: DataFrame, unsliced_df_len: Optional[int]=None) -> None:
         self.unsliced_df_len = len(pandas_df) if unsliced_df_len is None else unsliced_df_len
         self.df = pandas_df
-        self._byte_size = None
+        self._byte_size: Optional[int] = None
 
     @staticmethod
-    def from_csv(csv_string, column_types=None, stand_in_columns=None):
-        df = pandas.read_csv(io.BytesIO(csv_string), dtype=column_types)
+    def from_csv(csv_data: bytes, column_types: dict=None, stand_in_columns: StandInColumns=None) -> 'QFrame':
+        df = pandas.read_csv(io.BytesIO(csv_data), dtype=column_types)
         _add_stand_in_columns(df, stand_in_columns)
         return QFrame(df)
 
     @staticmethod
-    def from_json(d, column_types=None, stand_in_columns=None):
-        df = pandas.read_json(d, orient='records', dtype=column_types)
+    def from_json(json_data: bytes, column_types: dict=None, stand_in_columns: StandInColumns=None) -> 'QFrame':
+        df = pandas.read_json(json_data, orient='records', dtype=column_types)
 
         # Setting columns to categorials is slightly more awkward from dicts
         # than from CSV...
@@ -68,7 +70,7 @@ class QFrame(Sized):
         _add_stand_in_columns(df, stand_in_columns=stand_in_columns)
         return QFrame(df)
 
-    def query(self, q, filter_engine=None, stand_in_columns=None):
+    def query(self, q: dict, filter_engine: Optional[str]=None, stand_in_columns: StandInColumns=None) -> Optional['QFrame']:
         _add_stand_in_columns(self.df, stand_in_columns)
         set_current_qframe(self)
         if 'update' in q:
@@ -79,23 +81,23 @@ class QFrame(Sized):
         new_df, unsliced_df_len = query(self.df, q, filter_engine=filter_engine)
         return QFrame(new_df, unsliced_df_len=unsliced_df_len)
 
-    def to_csv(self):
+    def to_csv(self) -> bytes:
         return self.df.to_csv(index=False)
 
-    def to_json(self):
+    def to_json(self) -> bytes:
         return self.df.to_json(orient='records')
 
-    def to_dicts(self):
+    def to_dicts(self) -> List[dict]:
         return self.df.to_dict(orient='records')
 
     @property
-    def columns(self):
+    def columns(self) -> List:
         return self.df.columns
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.df)
 
-    def byte_size(self):
+    def byte_size(self) -> int:
         # Estimate of the number of bytes consumed by this QFrame, this is a
         # fairly heavy operation for large frames so we cache the result.
         if self._byte_size is None:
