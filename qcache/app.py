@@ -344,6 +344,8 @@ def run(port: int=8888,
     print("api_workers={}".format(api_workers))
     print("cache_shards={}".format(cache_shards))
     print("l2_cache_size={} bytes".format(l2_cache_size))
+    print("certfile={}".format(certfile))
+    print("cafile={}".format(cafile))
 
     cache = ShardedCache(max_cache_size=max_cache_size,
                          max_age=max_age,
@@ -354,9 +356,9 @@ def run(port: int=8888,
 
     app = make_app(cache, debug=debug, basic_auth=basic_auth)
 
-    args = {}
+    args = dict(max_buffer_size=max_cache_size)
     args.update(ssl_options(certfile=certfile, cafile=cafile))
-    http_server = httpserver.HTTPServer(app, max_buffer_size=max_cache_size)
+    http_server = httpserver.HTTPServer(app, **args)
     http_server.bind(port)
     http_server.start(api_workers)
     IOLoop.current().start()
