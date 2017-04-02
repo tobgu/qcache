@@ -165,6 +165,7 @@ class CacheShard:
         self.stats.reset()
 
 
+# TODO: Add mypy extension  -> NoReturn?
 def shard_process(name: str, ipc_address: str, statistics_buffer_size: int, max_cache_size: int, max_age: int):
     """
     Function executing a cache shard server.

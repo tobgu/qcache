@@ -1,2 +1,2 @@
-CONTENT_TYPE_JSON = 'application/json'
-CONTENT_TYPE_CSV = 'text/csv'
+CONTENT_TYPE_JSON: str = 'application/json'
+CONTENT_TYPE_CSV: str = 'text/csv'
