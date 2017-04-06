@@ -1,5 +1,9 @@
 Changelog
 =========
+0.8.1 (2017-04-06)
+------------------
+* Bump Pandas to 0.19.2
+
 0.8.0 (2017-01-08)
 ------------------
 * Support client cert verification
