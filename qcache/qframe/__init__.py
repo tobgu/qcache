@@ -1,4 +1,4 @@
-from typing import Sized, Optional, List, Tuple, Any
+from typing import Sized, Optional, List, Tuple, Any, Dict
 
 import io
 
@@ -22,6 +22,7 @@ def convert_if_number(obj: Any) -> Any:
     return obj
 
 StandInColumns = Optional[List[Tuple[str, ...]]]
+DTypes = Optional[Dict[str, str]]
 
 
 def _add_stand_in_columns(df: DataFrame, stand_in_columns: StandInColumns):
@@ -51,16 +52,16 @@ class QFrame(Sized):
         self._byte_size: Optional[int] = None
 
     @staticmethod
-    def from_csv(csv_data: bytes, column_types: dict=None, stand_in_columns: StandInColumns=None) -> 'QFrame':
+    def from_csv(csv_data: bytes, column_types: DTypes=None, stand_in_columns: StandInColumns=None) -> 'QFrame':
         df = pandas.read_csv(io.BytesIO(csv_data), dtype=column_types)
         _add_stand_in_columns(df, stand_in_columns)
         return QFrame(df)
 
     @staticmethod
-    def from_json(json_data: bytes, column_types: dict=None, stand_in_columns: StandInColumns=None) -> 'QFrame':
+    def from_json(json_data: bytes, column_types: DTypes=None, stand_in_columns: StandInColumns=None) -> 'QFrame':
         df = pandas.read_json(json_data, orient='records', dtype=column_types)
 
-        # Setting columns to categorials is slightly more awkward from dicts
+        # Setting columns to categorials is slightly more awkward from json
         # than from CSV...
         if column_types:
             for name, type in column_types.items():

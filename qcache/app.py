@@ -14,7 +14,7 @@ from tornado.web import RequestHandler, Application, url, HTTPError
 from qcache.cache.cache_common import QueryResult, InsertResult, Result
 from qcache.compression import CompressedContentEncoding, decoded_body
 from qcache.constants import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV
-from qcache.qframe import FILTER_ENGINE_NUMEXPR
+from qcache.qframe import FILTER_ENGINE_NUMEXPR, DTypes
 from qcache.cache.sharded_cache import ShardedCache
 
 
@@ -132,7 +132,7 @@ class DatasetHandler(RequestHandler):
 
         return content_type
 
-    def  header_to_key_values(self, header_name: str) -> Optional[List[Tuple[str, ...]]]:
+    def header_to_key_values(self, header_name: str) -> Optional[List[Tuple[str, ...]]]:
         header_value = self.request.headers.get(header_name, None)
         if not header_value:
             return None
@@ -157,7 +157,7 @@ class DatasetHandler(RequestHandler):
             for k, v in result.stats.items():
                 add_stats_header(self, k, v)
 
-    def dtypes(self) -> Optional[Dict[str, str]]:
+    def dtypes(self) -> DTypes:
         types = self.header_to_key_values('X-QCache-types')
         if not types:
             return None
