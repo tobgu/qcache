@@ -27,7 +27,7 @@ from qcache.cache.ipc import receive_object, ProcessHandle, STOP_COMMAND, send_o
 from qcache.cache.cache_ring import NodeRing
 from qcache.cache.l2_cache import create_l2_cache, GetResult
 from qcache.cache.cache_common import QueryResult, InsertResult, DeleteResult, Result
-from qcache.cache.dataset_cache import DatasetMap
+from qcache.cache.dataset_map import DatasetMap
 from qcache.cache.statistics import Statistics
 
 from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR

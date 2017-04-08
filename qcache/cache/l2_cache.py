@@ -17,7 +17,7 @@ from setproctitle import setproctitle
 from abc import ABCMeta, abstractmethod
 
 from qcache.cache.cache_common import InsertResult, DeleteResult, Result
-from qcache.cache.dataset_cache import DatasetMap
+from qcache.cache.dataset_map import DatasetMap
 from qcache.cache.ipc import ProcessHandle, STOP_COMMAND, receive_serialized_objects, serialize_object, \
     deserialize_object, send_serialized_objects, send_objects, STATUS_OK
 from qcache.cache.statistics import Statistics
