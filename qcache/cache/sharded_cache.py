@@ -196,7 +196,7 @@ def shard_process(name: str, ipc_address: str, statistics_buffer_size: int, max_
             traceback.print_exc()
 
 
-def spawn_shards(count: int, statistics_buffer_size: int, max_cache_size: int, max_age: int):
+def spawn_shards(count: int, statistics_buffer_size: int, max_cache_size: int, max_age: int) -> List[ProcessHandle]:
     """
     Start requested number of cache shard servers and return client side handles to
     the servers.
@@ -242,7 +242,7 @@ class ShardedCache:
 
         self.query_count += 1
 
-    def _shard_for_dataset(self, dataset_key: str):
+    def _shard_for_dataset(self, dataset_key: str) -> ProcessHandle:
         shard_id = self.cache_ring.get_node(dataset_key)
         return self.cache_shards[shard_id]
 
