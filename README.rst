@@ -196,14 +196,14 @@ Bitwise operators
 -----------------
 .. note:: This is only available in the pandas filter engine. See filter-engines_.
 
-There are two operators for bitwise filtering on integers: `allbits` and `anybits`.
+There are two operators for bitwise filtering on integers: `all_bits` and `any_bits`.
 
-* allbits - evaluates to true if all bits in the supplied argument are set in value tested against.
-* anybits - evaluates to true if any bits in the supplied argument are set in value tested agains.
+* all_bits - evaluates to true if all bits in the supplied argument are set in value tested against.
+* any_bits - evaluates to true if any bits in the supplied argument are set in value tested agains.
 
 .. code:: python
 
-   {"where": ["anybits", "foo", 31]}
+   {"where": ["any_bits", "foo", 31]}
 
 
 Clauses
