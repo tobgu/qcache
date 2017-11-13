@@ -552,21 +552,21 @@ class TestCompression(SharedTest):
     def test_upload_lz4_accept_lz4(self):
         self.call_api_with_compression(accept_encoding='lz4',
                                        content_encoding='lz4',
-                                       decoding_fn=lz4.loads,
-                                       encoding_fn=lz4.dumps,
+                                       decoding_fn=lz4.block.decompress,
+                                       encoding_fn=lz4.block.compress,
                                        expected_encoding='lz4')
 
     def test_upload_lz4_accept_gzip(self):
         self.call_api_with_compression(accept_encoding='lz4',
                                        content_encoding='gzip',
-                                       decoding_fn=lz4.loads,
+                                       decoding_fn=lz4.block.decompress,
                                        encoding_fn=qcache.compression.gzip_dumps,
                                        expected_encoding='lz4')
 
     def test_prefer_lz4_if_multiple_supported_encodings_exists(self):
         self.call_api_with_compression(accept_encoding='compress,gzip,lz4',
                                        content_encoding='gzip',
-                                       decoding_fn=lz4.loads,
+                                       decoding_fn=lz4.block.decompress,
                                        encoding_fn=qcache.compression.gzip_dumps,
                                        expected_encoding='lz4')
 
@@ -574,7 +574,7 @@ class TestCompression(SharedTest):
         self.call_api_with_compression(accept_encoding='foo,bar',
                                        content_encoding='lz4',
                                        decoding_fn=lambda x: x,
-                                       encoding_fn=lz4.dumps,
+                                       encoding_fn=lz4.block.compress,
                                        expected_encoding=None)
 
     def test_upload_with_unknown_encoding_results_in_400(self):

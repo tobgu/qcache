@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 import re
 
 from pandas import DataFrame
-from pandas.computation.ops import UndefinedVariableError
+from pandas.core.computation.ops import UndefinedVariableError
 from pandas.core.groupby import DataFrameGroupBy
 from qcache.qframe.pandas_filter import pandas_filter
 from qcache.qframe.common import assert_list, assert_integer, raise_malformed, MalformedQueryException

@@ -13,8 +13,12 @@ from qcache.qframe.update import update_frame
 
 def _get_dtype(obj):
     try:
-        float(obj)
-        return None    # Numpy figures this out automatically
+        try:
+            int(obj)
+            return numpy.int64
+        except ValueError:
+            float(obj)
+            return numpy.float64
     except ValueError:
         return numpy.object
 

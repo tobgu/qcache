@@ -7,10 +7,10 @@ from setuptools.command.test import test as TestCommand
 
 REQUIRES = [
     'docopt==0.6.2',
-    'numpy==1.10.1',
-    'pandas==0.19.2',
-    'tornado==4.4.2',
-    'lz4==0.8.2'
+    'numpy==1.13.3',
+    'pandas==0.21.0',
+    'tornado==4.5.2',
+    'lz4==0.10.1'
 ]
 
 

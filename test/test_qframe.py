@@ -589,8 +589,13 @@ def enum_data():
 foo,bar
 ccc,10
 ccc,11
-bbb,15
-aaa,20"""
+ccc,12
+ccc,13
+ccc,14
+ccc,15
+ccc,16
+bbb,20
+aaa,25"""
 
 
 @pytest.fixture
@@ -600,16 +605,21 @@ def enum_frame(enum_data):
 
 def test_enum_basic_sorting(enum_frame):
     assert enum_frame.query({'order_by': ['foo']}).to_dicts() == [
-        {'foo': 'aaa', 'bar': 20},
-        {'foo': 'bbb', 'bar': 15},
+        {'foo': 'aaa', 'bar': 25},
+        {'foo': 'bbb', 'bar': 20},
         {'foo': 'ccc', 'bar': 10},
         {'foo': 'ccc', 'bar': 11},
+        {'foo': 'ccc', 'bar': 12},
+        {'foo': 'ccc', 'bar': 13},
+        {'foo': 'ccc', 'bar': 14},
+        {'foo': 'ccc', 'bar': 15},
+        {'foo': 'ccc', 'bar': 16},
     ]
 
 
 def test_enum_filter_by_equality(enum_frame):
     assert enum_frame.query({'where': ['==', 'foo', '"bbb"']}).to_dicts() == [
-        {'foo': 'bbb', 'bar': 15},
+        {'foo': 'bbb', 'bar': 20},
     ]
 
 
