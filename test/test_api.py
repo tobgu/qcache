@@ -38,11 +38,6 @@ def from_csv(text):
     return list(csv.DictReader(input_data))
 
 
-class PandasMixin(object):
-    def get_app(self):
-        return app.make_app(url_prefix='', debug=True, default_filter_engine='pandas')
-
-
 class SharedTest(AsyncHTTPTestCase):
     def get_app(self):
         return app.make_app(url_prefix='', debug=True)
@@ -121,10 +116,6 @@ class TestBaseCases(SharedTest):
         assert json.loads(response.body) == [{'baz': None}]
 
 
-class TestBaseCasesPandas(PandasMixin, TestBaseCases):
-    pass
-
-
 class TestQueryWithPost(SharedTest):
     def post_query_json(self, url, query):
         return self.fetch(url, headers={'Accept': 'application/json, text/csv', 'Content-Type': 'application/json'},
@@ -164,10 +155,6 @@ class TestQueryWithPost(SharedTest):
 
         response = self.query_json('/dataset/abc', query={})
         assert response.code == 200
-
-
-class TestQueryWithPostPandas(PandasMixin, TestQueryWithPost):
-    pass
 
 
 class TestSlicing(SharedTest):
@@ -226,10 +213,6 @@ class TestCharacterEncoding(SharedTest):
         response = self.fetch('/dataset/abc', method='POST', body='',
                               headers={'Content-Type': 'text/csv; charset=iso-123'})
         assert response.code == 415
-
-
-class TestCharacterEncodingPandas(PandasMixin, TestCharacterEncoding):
-    pass
 
 
 class TestInvalidQueries(SharedTest):
@@ -291,9 +274,6 @@ class TestInvalidQueries(SharedTest):
         assert 'Invalid format' in json.loads(response.body)['error']
 
 
-class TestInvalidQueriesPandas(PandasMixin, TestInvalidQueries):
-    pass
-
 # Error cases:
 # - Malformed query
 # * Still some edge cases left in projection and filter.
@@ -307,16 +287,7 @@ class TestInvalidQueriesPandas(PandasMixin, TestInvalidQueries):
 
 
 class TestBitwiseQueries(SharedTest):
-    def test_bitwise_query_fails_for_filter_engine_numexpr(self):
-        response = self.post_json('/dataset/abc', [{'foo': 1, 'bar': 10}, {'foo': 2, 'bar': 20}])
-        assert response.code == 201
-
-        response = self.query_json('/dataset/abc', {'where': ['all_bits', 'foo', 1]})
-        assert response.code == 400
-
-
-class TestBitwiseQueriesPandas(PandasMixin, SharedTest):
-    def test_bitwise_query_succeeds_for_filter_engine_pandas(self):
+    def test_bitwise_query_succeeds(self):
         response = self.post_json('/dataset/abc', [{'foo': 1, 'bar': 10}, {'foo': 2, 'bar': 20}])
         assert response.code == 201
 
@@ -421,33 +392,6 @@ class TestColumnTyping(SharedTest):
         assert response.code == response_code
         return json.loads(response.body)
 
-    def test_type_int_to_string(self):
-        # There is no code implemented in qcache to cover this test case. Rather
-        # it documents the conversion from string to int in a query against int
-        # column while there is no similar conversion from int to string.
-        data = [
-            {'some_key': '123456', 'another_key': 1111},
-            {'some_key': 'abcdef', 'another_key': 2222}]
-
-        self.post_csv('/dataset/abc', data)
-
-        # Querying on integer field
-        assert self.get({'where': ['==', 'another_key', 2222]}) == \
-               [{'some_key': 'abcdef', 'another_key': 2222}]
-        assert self.get({'where': ['==', 'another_key', '2222']}) == \
-               [{'some_key': 'abcdef', 'another_key': 2222}]
-        assert not self.get({'where': ['==', 'another_key', '"2222"']})
-
-        # Querying on string field
-        assert not self.get({'where': ['==', 'some_key', 123456]})
-        assert not self.get({'where': ['==', 'some_key', '123456']})
-        assert self.get({'where': ['==', 'some_key', '"123456"']}) == \
-               [{'some_key': '123456', 'another_key': 1111}]
-
-        # Here abcdef is interpreted as another column. Since column abcdef
-        # doesn't exist a 400, Bad request will be returned.
-        assert self.get({'where': ['==', 'some_key', 'abcdef']}, response_code=400)
-
     def test_type_hint_string_on_column_with_only_integers(self):
         data = [
             {'some_key': '123456', 'another_key': 1111},
@@ -478,12 +422,7 @@ class TestColumnTyping(SharedTest):
             {'some_key': 'aaa'}
         ]
 
-
-class TestColumnTypingPandas(PandasMixin, TestColumnTyping):
     def test_type_int_to_string(self):
-        # This test illustrates the differences in type conversion string - number
-        # between the numexpr filter engine and the pandas filter engine.
-
         def get(q, response_code=200):
             response = self.query_json('/dataset/abc', q)
             assert response.code == response_code
@@ -499,22 +438,11 @@ class TestColumnTypingPandas(PandasMixin, TestColumnTyping):
         assert get({'where': ['==', 'another_key', 2222]}) == \
                [{'some_key': 'abcdef', 'another_key': 2222}]
 
-        # NOTE: This differs from the numexpr filter engine which
-        #       auto converts the string into an integer if possible.
         get({'where': ['==', 'another_key', '2222']}, response_code=400)
-
-        # NOTE: This differs from the numexpr filter engine which
-        #       will simple return an empty response.
         get({'where': ['==', 'another_key', '"2222"']}, response_code=400)
 
         # Querying on string field
         assert not get({'where': ['==', 'some_key', 123456]})
-
-        # NOTE: This differs from the numexpr filter engine which
-        #       will auto convert '123456' to an integer and quietly
-        #       compare that with the string column 'some_key' which
-        #       will result in no match. Here it will instead result
-        #       in an error because column 123456 is missing.
         get({'where': ['==', 'some_key', '123456']}, response_code=400)
 
         # Matching string
@@ -524,24 +452,6 @@ class TestColumnTypingPandas(PandasMixin, TestColumnTyping):
         # Here abcdef is interpreted as another column. Since column abcdef
         # doesn't exist a 400, Bad request will be returned.
         get({'where': ['==', 'some_key', 'abcdef']}, response_code=400)
-
-
-class TestUseDifferentFilterEngineBasedOnHeader(SharedTest):
-    def _query(self, url, query_engine, query):
-        url = url_concat(url, {'q': json.dumps(query)})
-        return self.fetch(url, headers={'Accept': 'application/json, text/csv',
-                                        'X-QCache-filter-engine': query_engine})
-
-    def test_query_with_different_filter_engines(self):
-        response = self.post_csv('/dataset/cba', [{'baz': 1, 'bar': 10}])
-        assert response.code == 201
-
-        response = self._query('/dataset/cba', 'pandas', {'where': ['all_bits', 'baz', 1]})
-        assert response.code == 200
-
-        # all_bits is not supported by the numexpr engine
-        response = self._query('/dataset/cba', 'numexpr', {'where': ['all_bits', 'baz', 1]})
-        assert response.code == 400
 
 
 class TestStandInColumns(SharedTest):

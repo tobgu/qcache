@@ -1,9 +1,5 @@
 from __future__ import unicode_literals
 
-import numpy
-
-from qcache.qframe.context import get_current_qframe
-
 
 class MalformedQueryException(Exception):
     pass
@@ -43,27 +39,3 @@ def unquote(s):
         s = s[:-1]
 
     return s
-
-
-def prepare_in_clause(q, filter_engine):
-    """
-    The arguments to an in expression may be either a list of values or
-    a sub query which is then executed to produce a list of values.
-    """
-    assert_len(q, 3)
-    _, col_name, args = q
-
-    if isinstance(args, dict):
-        # Sub query, circular dependency on query by nature so need to keep the import local
-        from qcache.qframe import query
-        current_qframe = get_current_qframe()
-        sub_df, _ = query(current_qframe.df, args, filter_engine=filter_engine)
-        try:
-            args = sub_df[col_name].values
-        except KeyError:
-            raise_malformed('Unknown column "{}"'.format(col_name), q)
-
-    if not isinstance(args, (list, numpy.ndarray)):
-        raise_malformed("Second argument must be a list", q)
-
-    return col_name, args

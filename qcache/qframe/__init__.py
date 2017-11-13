@@ -9,7 +9,6 @@ from qcache.qframe.common import unquote, MalformedQueryException
 from qcache.qframe.context import set_current_qframe
 from qcache.qframe.query import query
 from qcache.qframe.update import update_frame
-from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR
 
 
 def _get_dtype(obj):
@@ -65,7 +64,7 @@ class QFrame(object):
         _add_stand_in_columns(df, stand_in_columns=stand_in_columns)
         return QFrame(df)
 
-    def query(self, q, filter_engine=None, stand_in_columns=None):
+    def query(self, q, stand_in_columns=None):
         _add_stand_in_columns(self.df, stand_in_columns)
         set_current_qframe(self)
         if 'update' in q:
@@ -73,7 +72,7 @@ class QFrame(object):
             update_frame(self.df, q)
             return None
 
-        new_df, unsliced_df_len = query(self.df, q, filter_engine=filter_engine)
+        new_df, unsliced_df_len = query(self.df, q)
         return QFrame(new_df, unsliced_df_len=unsliced_df_len)
 
     def to_csv(self):

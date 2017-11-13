@@ -1,5 +1,9 @@
 Changelog
 =========
+0.9.0 (2017-11-XY)
+------------------
+* Numexpr filter engine is not available anymore, only Pandas. Numexpr is no longer a requirement of qcache.
+
 0.8.1 (2017-04-06)
 ------------------
 * Bump Pandas to 0.19.2
