@@ -642,6 +642,18 @@ def test_enum_from_dicts(enum_frame):
     assert cat_frame.byte_size() < frame.byte_size()
 
 
+############# NaN ###############
+
+
+def test_like_ignores_nan_values():
+    f = QFrame.from_csv("""
+    foo,bar
+    aaa,xyz
+    bbb,""")
+
+    assert f.query({'where': ['ilike', 'bar', '"ccc"']}).to_dicts() == []
+
+
 ################# Update ######################
 
 

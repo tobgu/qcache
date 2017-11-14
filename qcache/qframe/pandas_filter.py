@@ -124,7 +124,7 @@ def _like_filter(df, q):
     case = op == 'like'
 
     try:
-        return df[column].str.contains(regexp, case=case)
+        return df[column].str.contains(regexp, case=case, na=False)
     except AttributeError:
         raise_malformed("Invalid column type for (i)like", q)
 
