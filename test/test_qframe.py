@@ -1,4 +1,5 @@
 # coding=utf-8
+import json
 from contextlib import contextmanager
 import pytest
 import time
@@ -652,6 +653,34 @@ def test_like_ignores_nan_values():
     bbb,""")
 
     assert f.query({'where': ['ilike', 'bar', '"ccc"']}).to_dicts() == []
+
+
+def test_only_empty_string_is_nan():
+    f = QFrame.from_csv("""
+    foo,bar
+    aaa,N/A
+    aaa,n/a
+    aaa,NA
+    aaa,na
+    aaa,nan
+    aaa,NaN
+    aaa,-NaN
+    aaa,null
+    aaa,NULL
+    bbb,""")
+
+    assert json.loads(f.query({'select': ['bar']}).to_json()) == [
+        {"bar": "N/A"},
+        {"bar": "n/a"},
+        {"bar": "NA"},
+        {"bar": "na"},
+        {"bar": "nan"},
+        {"bar": "NaN"},
+        {"bar": "-NaN"},
+        {"bar": "null"},
+        {"bar": "NULL"},
+        {"bar": None},
+    ]
 
 
 ################# Update ######################

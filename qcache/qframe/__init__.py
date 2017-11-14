@@ -50,7 +50,7 @@ class QFrame(object):
 
     @staticmethod
     def from_csv(csv_string, column_types=None, stand_in_columns=None):
-        df = pandas.read_csv(StringIO(csv_string), dtype=column_types)
+        df = pandas.read_csv(StringIO(csv_string), dtype=column_types, na_values=[''], keep_default_na=False)
         _add_stand_in_columns(df, stand_in_columns)
         return QFrame(df)
 
