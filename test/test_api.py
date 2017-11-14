@@ -462,7 +462,9 @@ class TestStandInColumns(SharedTest):
 
         response = self.query_json('/dataset/cba', {'where': ['==', 'foo', 13]})
         assert response.code == 200
-        assert json.loads(response.body) == [{'baz': 1, 'bar': 10, 'foo': 13}]
+        result = json.loads(response.body)
+        assert result == [{'baz': 1, 'bar': 10, 'foo': 13}]
+        assert type(result[0]['foo']) == int
 
         response = self.query_json('/dataset/cba', {'where': ['==', 'foo', 14]})
         assert response.code == 200

@@ -4,7 +4,8 @@ Changelog
 ------------------
 * Numexpr filter engine is not available anymore, only Pandas. Numexpr is no longer a requirement of qcache.
 * Fix #12, like now ignores NaN
-*
+* Fix #13, only empty string is considered as NaN when reading CSV
+* Fix #8, integer standins remain integers
 
 0.8.1 (2017-04-06)
 ------------------
