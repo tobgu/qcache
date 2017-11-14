@@ -2,11 +2,9 @@ import re
 
 import pandas
 from pandas import DataFrame
-from pandas.computation.ops import UndefinedVariableError
+from pandas.core.computation.ops import UndefinedVariableError
 from pandas.core.groupby import DataFrameGroupBy
-from qcache.qframe.numexpr_filter import numexpr_filter
 from qcache.qframe.pandas_filter import pandas_filter
-from qcache.qframe.constants import FILTER_ENGINE_PANDAS
 from qcache.qframe.common import assert_list, assert_integer, raise_malformed, MalformedQueryException
 
 
@@ -206,7 +204,7 @@ def _distinct(dataframe, columns):
     return dataframe.drop_duplicates(**args)
 
 
-def query(dataframe, q, filter_engine=None):
+def query(dataframe, q):
     if not isinstance(q, dict):
         raise MalformedQueryException('Query must be a dictionary, not "{q}"'.format(q=q))
 
@@ -217,14 +215,9 @@ def query(dataframe, q, filter_engine=None):
 
     try:
         if CLAUSE_FROM in q:
-            dataframe, _ = query(dataframe, q[CLAUSE_FROM], filter_engine=filter_engine)
+            dataframe, _ = query(dataframe, q[CLAUSE_FROM])
 
-        if filter_engine == FILTER_ENGINE_PANDAS:
-            filtered_df = pandas_filter(dataframe, q.get('where'))
-        else:
-            # Default to use numexpr filter engine
-            filtered_df = numexpr_filter(dataframe, q.get('where'))
-
+        filtered_df = pandas_filter(dataframe, q.get('where'))
         grouped_df = _group_by(filtered_df, q.get('group_by'))
         distinct_df = _distinct(grouped_df, q.get('distinct'))
         projected_df = _project(distinct_df, q.get('select'))

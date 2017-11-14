@@ -1,7 +1,15 @@
 import functools
 
-from qcache.qframe.constants import COMPARISON_OPERATORS, JOINING_OPERATORS, FILTER_ENGINE_PANDAS
-from qcache.qframe.common import assert_list, raise_malformed, is_quoted, unquote, assert_len, prepare_in_clause
+import operator
+
+import numpy
+
+from qcache.qframe.common import assert_list, raise_malformed, is_quoted, unquote, assert_len
+from qcache.qframe.constants import COMPARISON_OPERATORS
+from qcache.qframe.context import get_current_qframe
+
+JOINING_OPERATORS = {'&': operator.and_,
+                     '|': operator.or_}
 
 
 def _leaf_node(df, q):
@@ -65,8 +73,32 @@ def _join_filter(df, q):
     return result
 
 
+def prepare_in_clause(q):
+    """
+    The arguments to an in expression may be either a list of values or
+    a sub query which is then executed to produce a list of values.
+    """
+    assert_len(q, 3)
+    _, col_name, args = q
+
+    if isinstance(args, dict):
+        # Sub query, circular dependency on query by nature so need to keep the import local
+        from qcache.qframe import query
+        current_qframe = get_current_qframe()
+        sub_df, _ = query(current_qframe.df, args)
+        try:
+            args = sub_df[col_name].values
+        except KeyError:
+            raise_malformed('Unknown column "{}"'.format(col_name), q)
+
+    if not isinstance(args, (list, numpy.ndarray)):
+        raise_malformed("Second argument must be a list", q)
+
+    return col_name, args
+
+
 def _in_filter(df, q):
-    col_name, args = prepare_in_clause(q, FILTER_ENGINE_PANDAS)
+    col_name, args = prepare_in_clause(q)
     return df[col_name].isin(args)
 
 
@@ -93,7 +125,7 @@ def _like_filter(df, q):
     case = op == 'like'
 
     try:
-        return df[column].str.contains(regexp, case=case)
+        return df[column].str.contains(regexp, case=case, na=False)
     except AttributeError:
         raise_malformed("Invalid column type for (i)like", q)
 

@@ -1,20 +1,17 @@
 # -*- coding: utf-8 -*-
 import re
-import sys
 from setuptools import setup
-from setuptools.command.test import test as TestCommand
 
 
 REQUIRES = [
     'docopt==0.6.2',
-    'numexpr==2.6.2',
-    'numpy==1.12.0',
-    'pandas>=0.19.0',
-    'tornado==4.4.2',
-    'lz4==0.8.2',
     'blosc==1.5.0',
     'pyzmq==16.0.2',
     'setproctitle==1.1.10',
+    'numpy==1.13.3',
+    'pandas==0.21.0',
+    'tornado==4.5.2',
+    'lz4==0.10.1'
 ]
 
 

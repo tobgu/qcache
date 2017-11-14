@@ -5,7 +5,7 @@
 Usage:
   qcache [-hd] [--port=PORT] [--size=MAX_SIZE] [--age=MAX_AGE] [--statistics-buffer-size=BUFFER_SIZE]
          [--cert-file=PATH_TO_CERT] [--ca-file=PATH_TO_CA] [--basic-auth=<USER>:<PASSWORD>]
-         [--default-filter-engine=FILTER_ENGINE] [--api-workers=API_WORKERS] [--cache-shards=CACHE_SHARDS]
+         [--api-workers=API_WORKERS] [--cache-shards=CACHE_SHARDS]
          [--l2-cache-size=L2_CACHE_SIZE]
 
 Options:
@@ -19,8 +19,6 @@ Options:
   -ca PATH_TO_CA --ca-file=PATH_TO_CA   Path to CA file, if provided client certificates will be checked against this ca
   -d --debug   Run in debug mode
   -ba <USER>:<PASSWORD> --basic-auth=<USER>:<PASSWORD>   Enable basic auth, requires that SSL is enabled.
-  --default-filter-engine=FILTER_ENGINE   Which filter engine to use if none is specified in the query.
-                                          Possible values: numexpr/pandas. [default: numexpr]
   --api-workers=API_WORKERS   Number of processes that handle API calls, serialization/deserialization of
                               data etc. [default: 1]
   --cache-shards=CACHE_SHARDS   Number of cache shards [default: 1]
@@ -30,7 +28,7 @@ Options:
 from docopt import docopt
 from qcache.app import run
 
-__version__ = "0.9.0rc1"
+__version__ = "0.9.0rc1-py3"
 __author__ = "Tobias Gustafsson"
 __license__ = "MIT"
 
@@ -53,7 +51,6 @@ def main():
             certfile=args['--cert-file'],
             cafile=args['--ca-file'],
             basic_auth=args['--basic-auth'],
-            default_filter_engine=args['--default-filter-engine'],
             api_workers=int(args['--api-workers']),
             cache_shards=int(args['--cache-shards']),
             l2_cache_size=int(args['--l2-cache-size']))

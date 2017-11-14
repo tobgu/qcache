@@ -9,7 +9,6 @@ from qcache.qframe.common import unquote, MalformedQueryException
 from qcache.qframe.context import set_current_qframe
 from qcache.qframe.query import query
 from qcache.qframe.update import update_frame
-from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR
 
 
 def convert_if_number(obj: Any) -> Any:
@@ -19,7 +18,17 @@ def convert_if_number(obj: Any) -> Any:
         except ValueError:
             pass
 
-    return obj
+
+def _get_dtype(obj):
+    try:
+        try:
+            int(obj)
+            return numpy.int64
+        except ValueError:
+            float(obj)
+            return numpy.float64
+    except ValueError:
+        return numpy.object
 
 StandInColumns = Optional[List[Tuple[str, ...]]]
 DTypes = Optional[Dict[str, str]]
@@ -53,7 +62,7 @@ class QFrame(Sized):
 
     @staticmethod
     def from_csv(csv_data: bytes, column_types: DTypes=None, stand_in_columns: StandInColumns=None) -> 'QFrame':
-        df = pandas.read_csv(io.BytesIO(csv_data), dtype=column_types)
+        df = pandas.read_csv(io.BytesIO(csv_data), dtype=column_types, na_values=[''], keep_default_na=False)
         _add_stand_in_columns(df, stand_in_columns)
         return QFrame(df)
 
@@ -71,7 +80,7 @@ class QFrame(Sized):
         _add_stand_in_columns(df, stand_in_columns=stand_in_columns)
         return QFrame(df)
 
-    def query(self, q: dict, filter_engine: Optional[str]=None, stand_in_columns: StandInColumns=None) -> Optional['QFrame']:
+    def query(self, q: dict, stand_in_columns: StandInColumns=None) -> Optional['QFrame']:
         _add_stand_in_columns(self.df, stand_in_columns)
         set_current_qframe(self)
         if 'update' in q:
@@ -79,7 +88,7 @@ class QFrame(Sized):
             update_frame(self.df, q)
             return None
 
-        new_df, unsliced_df_len = query(self.df, q, filter_engine=filter_engine)
+        new_df, unsliced_df_len = query(self.df, q)
         return QFrame(new_df, unsliced_df_len=unsliced_df_len)
 
     def to_csv(self) -> bytes:

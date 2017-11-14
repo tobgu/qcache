@@ -14,7 +14,7 @@ from tornado.web import RequestHandler, Application, url, HTTPError
 from qcache.cache.cache_common import QueryResult, InsertResult, Result
 from qcache.compression import CompressedContentEncoding, decoded_body
 from qcache.constants import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV
-from qcache.qframe import FILTER_ENGINE_NUMEXPR, DTypes
+from qcache.qframe import DTypes
 from qcache.cache.sharded_cache import ShardedCache
 
 
@@ -182,7 +182,6 @@ class DatasetHandler(RequestHandler):
         accept_type = self.accept_type()
         result = self.cache.query(dataset_key=dataset_key,
                                   q=q,
-                                  filter_engine=self.request.headers.get('X-QCache-filter-engine', None),
                                   stand_in_columns=self.stand_in_columns(),
                                   accept_type=accept_type)
 
@@ -258,6 +257,7 @@ class DatasetHandler(RequestHandler):
         self.write("")
 
 
+
 @http_auth
 class StatusHandler(RequestHandler):
     def initialize(self, cache: ShardedCache):
@@ -325,11 +325,9 @@ def run(port: int=8888,
         certfile: Optional[str]=None,
         cafile: Optional[str]=None,
         basic_auth: Optional[str]=None,
-        default_filter_engine: str=FILTER_ENGINE_NUMEXPR,
         api_workers: int=1,
         cache_shards: int=1,
         l2_cache_size: int=0):
-
     if basic_auth and not certfile:
         print("TLS must be enabled to use basic auth!")
         return
@@ -340,7 +338,6 @@ def run(port: int=8888,
     print("max_age={} seconds".format(max_age))
     print("statistics_buffer_size={}".format(statistics_buffer_size))
     print("debug={}".format(debug))
-    print("default_filter_engine={}".format(default_filter_engine))
     print("api_workers={}".format(api_workers))
     print("cache_shards={}".format(cache_shards))
     print("l2_cache_size={} bytes".format(l2_cache_size))
@@ -349,7 +346,6 @@ def run(port: int=8888,
 
     cache = ShardedCache(max_cache_size=max_cache_size,
                          max_age=max_age,
-                         default_filter_engine=default_filter_engine,
                          statistics_buffer_size=statistics_buffer_size,
                          shard_count=cache_shards,
                          l2_cache_size=l2_cache_size)

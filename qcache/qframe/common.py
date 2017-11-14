@@ -46,7 +46,7 @@ def unquote(s):
     return s
 
 
-def prepare_in_clause(q, filter_engine):
+def prepare_in_clause(q):
     """
     The arguments to an in expression may be either a list of values or
     a sub query which is then executed to produce a list of values.
@@ -58,7 +58,7 @@ def prepare_in_clause(q, filter_engine):
         # Sub query, circular dependency on query by nature so need to keep the import local
         from qcache.qframe import query
         current_qframe = get_current_qframe()
-        sub_df, _ = query(current_qframe.df, args, filter_engine=filter_engine)
+        sub_df, _ = query(current_qframe.df, args)
         try:
             # Explicitly remove nulls since they should not contribute to the result
             args = sub_df[col_name].dropna().values

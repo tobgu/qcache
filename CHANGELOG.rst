@@ -1,5 +1,17 @@
 Changelog
 =========
+0.9.0 (2017-11-14)
+------------------
+* Numexpr filter engine is not available anymore, only Pandas. Numexpr is no longer a requirement of qcache.
+  NB! Major backwards incompatibility
+* Fix #12, like now ignores NaN
+* Fix #13, only empty string is considered as NaN when reading CSV
+* Fix #8, integer standins remain integers
+
+0.8.1 (2017-04-06)
+------------------
+* Bump Pandas to 0.19.2
+
 0.8.0 (2017-01-08)
 ------------------
 * Support client cert verification

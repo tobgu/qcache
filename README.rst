@@ -181,8 +181,6 @@ In
 
 Like/ilike
 ----------
-.. note:: This is only available in the pandas filter engine. See filter-engines_.
-
 Like and ilike are used for string matching and work similar to LIKE in SQL. Like is case sensitive
 while ilike is case insensitive. In addition to string matching using % as wildcard like/ilike also
 supports regexps.
@@ -194,16 +192,14 @@ supports regexps.
 
 Bitwise operators
 -----------------
-.. note:: This is only available in the pandas filter engine. See filter-engines_.
+There are two operators for bitwise filtering on integers: `all_bits` and `any_bits`.
 
-There are two operators for bitwise filtering on integers: `allbits` and `anybits`.
-
-* allbits - evaluates to true if all bits in the supplied argument are set in value tested against.
-* anybits - evaluates to true if any bits in the supplied argument are set in value tested agains.
+* all_bits - evaluates to true if all bits in the supplied argument are set in value tested against.
+* any_bits - evaluates to true if any bits in the supplied argument are set in value tested agains.
 
 .. code:: python
 
-   {"where": ["anybits", "foo", 31]}
+   {"where": ["any_bits", "foo", 31]}
 
 
 Clauses
@@ -396,26 +392,6 @@ This header can be used in request both for storing and querying data.
    X-QCache-stand-in-columns: foo=10,bar=baz
 
 
-Query requests
-==============
-.. _query: http://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.query.html
-.. _filter-engines:
-
-X-QCache-filter-engine
-----------------------
-QCache currently implements two different filter engines (the code used to process the where clause).
-
-
-* numexpr - This is the original and currently default filter engine. It makes use of the dataframe _query function.
-            It may be more performant on really large datasets compared to the pandas engine below
-            (more measurements needed).
-* pandas - This is using standard pandas functions on the dataset to filter data.
-
-.. code::
-
-   X-QCache-filter-engine: pandas
-
-
 Query responses
 ===============
 
@@ -500,13 +476,12 @@ For query responses prefer JSON as the amount of data is often small and it's ea
 
 .. _Pandas: http://pandas.pydata.org/
 .. _NumPy: http://www.numpy.org/
-.. _Numexpr: https://github.com/pydata/numexpr
 .. _Tornado: http://www.tornadoweb.org/en/stable/
 
 ***********************************
 Standing on the shoulders of giants
 ***********************************
-QCache makes heavy use of the fantastic python libraries Pandas_, NumPy_, Numexpr_ and Tornado_.
+QCache makes heavy use of the fantastic python libraries Pandas_, NumPy_ and Tornado_.
 
 
 *********************

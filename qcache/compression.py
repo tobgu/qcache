@@ -23,7 +23,7 @@ def gzip_loads(data: bytes) -> bytes:
 
 
 ENCODINGS = {
-    'lz4': (lz4.loads, lz4.dumps),
+    'lz4': (lz4.block.decompress, lz4.block.compress),
     'gzip': (gzip_loads, gzip_dumps),
     None: (lambda c: c, lambda c: c)
 }
