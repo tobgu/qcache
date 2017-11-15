@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 import re
-import sys
 from setuptools import setup
-from setuptools.command.test import test as TestCommand
 
 
 REQUIRES = [
     'docopt==0.6.2',
     'numpy==1.13.3',
-    'pandas==0.21.0',
+    'pandas==0.20.3',
     'tornado==4.5.2',
     'lz4==0.10.1'
 ]
@@ -47,7 +45,7 @@ setup(
     author_email='tobias.l.gustafsson@gmail.com',
     url='https://github.com/tobgu/qcache',
     install_requires=REQUIRES,
-    license=read("LICENSE"),
+    license="MIT",
     zip_safe=False,
     keywords='qcache',
     classifiers=[
