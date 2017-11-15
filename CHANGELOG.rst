@@ -11,7 +11,7 @@ Changelog
 * Fix #12, like now ignores NaN
 * Fix #13, only empty string is considered as NaN when reading CSV
 * Fix #8, integer standins remain integers
-* Upgrade Pandas to 0.21.0 and Numpy to 0.13.3
+* Upgrade Pandas to 0.21.0 and Numpy to 0.13.1
 
 0.8.1 (2017-04-06)
 ------------------
