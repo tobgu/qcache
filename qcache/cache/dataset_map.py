@@ -33,7 +33,7 @@ class DatasetMap(Sized):
         self.reset()
 
     def has_expired(self, item) -> bool:
-        return self.max_age and time() > item.creation_time + self.max_age
+        return bool(self.max_age and time() > item.creation_time + self.max_age)
 
     def evict_if_too_old(self, key):
         if self.has_expired(self._cache_dict[key]):

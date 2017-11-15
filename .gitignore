@@ -50,3 +50,4 @@ htmlcov
 small*.csv
 medium*.csv
 large*.csv
+.mypy_cache
