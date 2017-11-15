@@ -87,7 +87,7 @@ def prepare_in_clause(q):
         current_qframe = get_current_qframe()
         sub_df, _ = query(current_qframe.df, args)
         try:
-            args = sub_df[col_name].values
+            args = sub_df[col_name].dropna().values
         except KeyError:
             raise_malformed('Unknown column "{}"'.format(col_name), q)
 

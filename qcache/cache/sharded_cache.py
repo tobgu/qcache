@@ -30,7 +30,6 @@ from qcache.cache.cache_common import QueryResult, InsertResult, DeleteResult, R
 from qcache.cache.dataset_map import DatasetMap
 from qcache.cache.statistics import Statistics
 
-from qcache.qframe.constants import FILTER_ENGINE_NUMEXPR
 from qcache.constants import CONTENT_TYPE_CSV, CONTENT_TYPE_JSON
 from qcache.qframe import MalformedQueryException, QFrame, StandInColumns
 
@@ -41,16 +40,14 @@ from qcache.qframe import MalformedQueryException, QFrame, StandInColumns
 
 
 class QueryCommand:
-    def __init__(self, dataset_key: str, q: dict, filter_engine: str, stand_in_columns: StandInColumns) -> None:
+    def __init__(self, dataset_key: str, q: dict, stand_in_columns: StandInColumns) -> None:
         self.dataset_key = dataset_key
         self.q = q
-        self.filter_engine = filter_engine
         self.stand_in_columns = stand_in_columns
 
     def execute(self, cache_shard):
         return cache_shard.query(dataset_key=self.dataset_key,
                                  q=self.q,
-                                 filter_engine=self.filter_engine,
                                  stand_in_columns=self.stand_in_columns)
 
 
@@ -100,7 +97,7 @@ class CacheShard:
         self.dataset_map = DatasetMap(max_size=max_cache_size, max_age=max_age)
         self.query_count = 0
 
-    def query(self, dataset_key: str, q: dict, filter_engine: str, stand_in_columns: StandInColumns) -> QueryResult:
+    def query(self, dataset_key: str, q: dict, stand_in_columns: StandInColumns) -> QueryResult:
         t0 = time.time()
         if dataset_key not in self.dataset_map:
             self.stats.inc('miss_count')
@@ -113,7 +110,7 @@ class CacheShard:
 
         qf = self.dataset_map[dataset_key]
         try:
-            result_frame = qf.query(q, filter_engine=filter_engine, stand_in_columns=stand_in_columns)
+            result_frame = qf.query(q, stand_in_columns=stand_in_columns)
         except MalformedQueryException as e:
             return QueryResult(status=QueryResult.STATUS_MALFORMED_QUERY, data=str(e))
 
@@ -221,11 +218,9 @@ class ShardedCache:
                  statistics_buffer_size: int=1000,
                  max_cache_size: int=1000000000,
                  max_age: int=0,
-                 default_filter_engine: str=FILTER_ENGINE_NUMEXPR,
                  shard_count: int=1,
                  l2_cache_size: int=0) -> None:
         self.query_count = 0
-        self.default_filter_engine = default_filter_engine
         self.max_age = max_age
         self.cache_ring = NodeRing(range(shard_count))
         self.cache_shards = spawn_shards(shard_count,
@@ -268,11 +263,9 @@ class ShardedCache:
             result.content_type = accept_type
         return result
 
-    def query(self, dataset_key: str, q: dict, filter_engine: str, stand_in_columns: Optional[List[Tuple[str, ...]]], accept_type: str):
-        filter_engine = filter_engine or self.default_filter_engine
+    def query(self, dataset_key: str, q: dict, stand_in_columns: Optional[List[Tuple[str, ...]]], accept_type: str):
         command = QueryCommand(dataset_key=dataset_key,
                                q=q,
-                               filter_engine=filter_engine,
                                stand_in_columns=stand_in_columns)
 
         result = self._do_query(command, accept_type)

@@ -18,6 +18,8 @@ def convert_if_number(obj: Any) -> Any:
         except ValueError:
             pass
 
+    return obj
+
 
 def _get_dtype(obj):
     try:
