@@ -8,16 +8,14 @@ class CacheItem(object):
         self._qframe = qframe
         self.access_count = 0
 
+        # 100 bytes is just a very rough estimate of the object overhead of this instance
+        self.size = 100 + qframe.byte_size()
+
     @property
     def dataset(self):
         self.last_access_time = time()
         self.access_count += 1
         return self._qframe
-
-    @property
-    def size(self):
-        # 100 bytes is just a very rough estimate of the object overhead of this instance
-        return 100 + self._qframe.byte_size()
 
 
 class DatasetCache(object):

@@ -350,6 +350,27 @@ class TestCacheEvictionOnSize(SharedTest):
         assert self.query_json('/dataset/abc', {}).code == 200
         assert self.query_json('/dataset/cba', {}).code == 200
 
+    def test_query_stand_in_columns_do_not_interfere_with_cache_eviction(self):
+        # Executing a query with stand in columns can increase the dataset
+        # size after insert. This should not lead to failed handling of the
+        # current cache size where the measured cache size gets smaller and
+        # smaller which causes the actual cache size to grow. See #15.
+        data = [{'some_longish_key': 'some_fairly_longish_value_that_needs_to_be_stuffed_in'},
+                {'some_longish_key': 'another_fairly_longish_value_that_also_should_be_fitted'}]
+
+        repetitions = 10
+        for i in range(repetitions):
+            response = self.post_json('/dataset/{i}'.format(i=i), data)
+            assert response.code == 201
+            assert self.query_json('/dataset/{i}'.format(i=i),
+                                   {},
+                                   extra_headers={'X-QCache-stand-in-columns': 'foo="bar_baz_qux"'}).code == 200
+
+        stats = self.get_statistics()
+        assert stats['dataset_count'] == 1
+        assert stats['size_evict_count'] == repetitions - 1
+        assert stats['cache_size'] == 370
+
 
 class TestCacheEvictionOnAge(SharedTest):
     def get_app(self):
