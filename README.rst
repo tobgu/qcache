@@ -527,3 +527,9 @@ Running tests
 
    pip install -r dev-requirements.txt
    invoke test
+
+TLS
+===
+Some tests rely on a couple of certs found under `tls/`. If these have expired
+they have to be regenerated. This is done by executing `generate_test_certs.sh`
+from the `tls` directory.
