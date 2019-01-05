@@ -1,5 +1,14 @@
 Changelog
 =========
+0.9.3 (2019-01-05)
+------------------
+* Update dependencies on lz4 and tornado
+* Allow float type hinting
+
+0.9.2 (-)
+------------------
+* Never released
+
 0.9.1 (2017-11-15)
 ------------------
 * Downgrade to Pandas 0.20.3 in an attempt to fix #14.
