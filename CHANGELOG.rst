@@ -5,9 +5,9 @@ Changelog
 * Update dependencies on lz4 and tornado
 * Allow float type hinting
 
-0.9.2 (-)
+0.9.2 (2018-05-23)
 ------------------
-* Never released
+* Fix #15, fix cache item size at creation
 
 0.9.1 (2017-11-15)
 ------------------
