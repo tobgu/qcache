@@ -1,7 +1,7 @@
 import gzip
 from io import BytesIO
 
-import lz4 as lz4
+import lz4.block
 from tornado.web import OutputTransform, HTTPError
 
 

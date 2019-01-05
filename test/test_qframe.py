@@ -754,8 +754,8 @@ def test_unknown_clause_in_query(basic_frame):
         basic_frame.query({'foo': []})
         assert False
     except MalformedQueryException as e:
-        print e.message
-        assert 'foo' in e.message
+        print str(e)
+        assert 'foo' in str(e)
 
 
 ################### Performance ####################

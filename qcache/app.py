@@ -185,7 +185,7 @@ class DatasetHandler(RequestHandler):
         try:
             result_frame = qf.query(q, stand_in_columns=self.stand_in_columns())
         except MalformedQueryException as e:
-            self.write(json.dumps({'error': e.message}))
+            self.write(json.dumps({'error': str(e)}))
             self.set_status(ResponseCode.BAD_REQUEST)
             return
 

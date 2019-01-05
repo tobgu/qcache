@@ -225,4 +225,4 @@ def query(dataframe, q):
         sliced_df = _do_slice(ordered_df, q.get('offset'), q.get('limit'))
         return sliced_df, len(ordered_df)
     except UndefinedVariableError as e:
-        raise MalformedQueryException(e.message)
+        raise MalformedQueryException(str(e))
