@@ -474,6 +474,15 @@ class TestColumnTyping(SharedTest):
         # doesn't exist a 400, Bad request will be returned.
         get({'where': ['==', 'some_key', 'abcdef']}, response_code=400)
 
+    def test_type_hinting_with_float(self):
+        data = [{'some_key': 12}]
+        response = self.post_csv('/dataset/abc', data, types={'some_key': 'float'})
+        assert response.code == 201
+
+        result = self.get({'where': ['==', 'some_key', 12.0]})
+        assert result == [{'some_key': 12.0}]
+        assert type(result[0]['some_key']) == float
+
 
 class TestStandInColumns(SharedTest):
     def test_stand_in_column_with_numeric_value(self):

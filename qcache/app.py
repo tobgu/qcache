@@ -158,6 +158,8 @@ class DatasetHandler(RequestHandler):
                 dtypes[column_name] = 'object'
             elif type_name == 'enum':
                 dtypes[column_name] = 'category'
+            elif type_name == 'float':
+                dtypes[column_name] = 'float64'
             else:
                 raise HTTPError(ResponseCode.BAD_REQUEST,
                                 'Unrecognized type name "{type_name}" for column "{column_name}"'.format(
