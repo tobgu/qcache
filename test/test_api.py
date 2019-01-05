@@ -650,6 +650,11 @@ class SSLTestBase(AsyncHTTPTestCase):
     def get_protocol(self):
         return 'https'
 
+    def get_url(self, path):
+        """Returns an absolute url for the given path on the test server."""
+        return '%s://localhost:%s%s' % (self.get_protocol(),
+                                        self.get_http_port(), path)
+
     def get_ssl_version(self):
         raise NotImplementedError()
 
