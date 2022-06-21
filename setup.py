@@ -5,7 +5,7 @@ from setuptools import setup
 
 REQUIRES = [
     'docopt==0.6.2',
-    'numpy==1.13.3',
+    'numpy==1.22.0',
     'pandas==0.20.3',
     'tornado==5.1.1',
     'lz4==2.1.6'
